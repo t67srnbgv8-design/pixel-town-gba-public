@@ -14,10 +14,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check devkitPro installation
+        run: |
+          echo "DEVKITPRO=$DEVKITPRO"
+          echo "DEVKITARM=$DEVKITARM"
+          echo "--- Searching for gba.h ---"
+          find /opt/devkitpro -name gba.h -type f 2>/dev/null || true
+          echo "--- devkitPro folders ---"
+          ls -la /opt/devkitpro
+          echo "--- pacman packages ---"
+          pacman -Q | grep -E "gba|devkitARM" || true
+
       - name: Build ROM
         run: make
 
       - name: Upload ROM
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: PixelTown-GBA

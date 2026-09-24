@@ -1,6 +1,7 @@
 #include <gba.h>
 
 #include "tileset.h"
+#include "metatiles.h"
 #include "world.h"
 #include "player.h"
 
@@ -27,12 +28,6 @@ int main(void)
     irqInit();
     irqEnable(IRQ_VBLANK);
 
-    /*
-       Mode 0:
-       BG0 = ground
-       BG1 = foreground
-       OBJ = player
-    */
     SetMode(
         MODE_0 |
         BG0_ON |
@@ -42,9 +37,12 @@ int main(void)
     );
 
     /*
-       64x32 ground map:
-       screen blocks 28 + 29
+       BG0 = normal ground/world
+
+       Priority 2 means the player
+       sprite can appear above it.
     */
+
     REG_BG0CNT =
         BG_PRIORITY(2) |
         CHAR_BASE(0) |
@@ -53,12 +51,11 @@ int main(void)
         BG_SIZE_1;
 
     /*
-       64x32 foreground map:
-       screen blocks 30 + 31
+       BG1 = canopy / foreground
 
-       Priority 0 means this can appear in front
-       of the player.
+       Priority 0 puts it above player.
     */
+
     REG_BG1CNT =
         BG_PRIORITY(0) |
         CHAR_BASE(0) |
@@ -67,6 +64,8 @@ int main(void)
         BG_SIZE_1;
 
     tilesetInit();
+
+    metatilesInit();
 
     worldInit();
     worldDraw();
@@ -79,9 +78,6 @@ int main(void)
 
         playerUpdate();
 
-        /*
-           Camera follows player.
-        */
         int cameraX =
             player.x + 8 -
             SCREEN_W / 2;
@@ -102,14 +98,17 @@ int main(void)
             WORLD_H - SCREEN_H
         );
 
-        /*
-           Both world layers move together.
-        */
-        REG_BG0HOFS = cameraX;
-        REG_BG0VOFS = cameraY;
+        REG_BG0HOFS =
+            cameraX;
 
-        REG_BG1HOFS = cameraX;
-        REG_BG1VOFS = cameraY;
+        REG_BG0VOFS =
+            cameraY;
+
+        REG_BG1HOFS =
+            cameraX;
+
+        REG_BG1VOFS =
+            cameraY;
 
         playerDraw(
             cameraX,

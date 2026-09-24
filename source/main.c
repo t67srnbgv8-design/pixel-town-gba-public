@@ -2,6 +2,7 @@
 
 #define MAP_W 64
 #define MAP_H 32
+
 #define WORLD_W (MAP_W * 8)
 #define WORLD_H (MAP_H * 8)
 
@@ -9,70 +10,97 @@
 #define SCREEN_H 160
 
 /* =========================================================
-   TILE IDS
+   BACKGROUND TILE IDS
    ========================================================= */
 
-#define T_GRASS        0
-#define T_GRASS_DETAIL 1
-#define T_PATH         2
-#define T_PATH_EDGE    3
+#define T_EMPTY         0
+#define T_GRASS         1
+#define T_GRASS_A       2
+#define T_GRASS_B       3
 
-#define T_WALL         4
-#define T_WALL_SHADOW  5
-#define T_ROOF         6
-#define T_ROOF_LIGHT   7
-#define T_ROOF_EDGE    8
-#define T_DOOR         9
-#define T_WINDOW       10
+#define T_PATH          4
+#define T_PATH_LIGHT    5
+#define T_PATH_TOP      6
+#define T_PATH_BOTTOM   7
 
-#define T_TREE_LIGHT   11
-#define T_TREE_DARK    12
-#define T_TRUNK        13
+#define T_WALL          8
+#define T_WALL_SHADOW   9
+#define T_WINDOW        10
+#define T_DOOR          11
 
-#define T_BUSH         14
-#define T_FLOWER       15
+#define T_ROOF          12
+#define T_ROOF_LIGHT    13
+#define T_ROOF_DARK     14
+#define T_ROOF_EDGE     15
 
-#define T_FENCE_H      16
-#define T_FENCE_V      17
+#define T_TREE_LIGHT    16
+#define T_TREE_MID      17
+#define T_TREE_DARK     18
+#define T_TRUNK         19
 
-#define T_WATER        18
-#define T_WATER_LIGHT  19
-#define T_WATER_EDGE   20
+#define T_BUSH          20
+#define T_FLOWER        21
 
-#define T_STONE        21
-#define T_SIGN         22
-#define T_GARDEN       23
+#define T_FENCE_H       22
+#define T_FENCE_V       23
+#define T_FENCE_POST    24
+
+#define T_WATER         25
+#define T_WATER_SHINE   26
+#define T_BANK_TOP      27
+#define T_BANK_BOTTOM   28
+
+#define T_SOIL          29
+#define T_STONE         30
+#define T_SIGN          31
+
+#define T_ROOF_CORNER_L 32
+#define T_ROOF_CORNER_R 33
 
 #define DIR_DOWN  0
 #define DIR_UP    1
 #define DIR_LEFT  2
 #define DIR_RIGHT 3
 
+
 /* =========================================================
-   TILE HELPERS
+   COLLISION MAP
+
+   Separate from graphics.
+   This is important: decoration no longer automatically
+   decides where the player can walk.
    ========================================================= */
 
-static void tilePixel(u16 *tile, int x, int y, u8 c)
+static u8 collision[MAP_H][MAP_W];
+
+
+/* =========================================================
+   TILE PIXEL HELPERS
+   ========================================================= */
+
+static void px(u16 *tile, int x, int y, u8 colour)
 {
     int p = y * 8 + x;
     int word = p >> 2;
     int shift = (p & 3) * 4;
 
     tile[word] &= ~(0xF << shift);
-    tile[word] |= (c & 0xF) << shift;
+    tile[word] |= (colour & 0xF) << shift;
 }
 
-static void fillTile(u16 *tile, u8 c)
+
+static void fill(u16 *tile, u8 colour)
 {
     u16 v =
-        c |
-        (c << 4) |
-        (c << 8) |
-        (c << 12);
+        colour |
+        (colour << 4) |
+        (colour << 8) |
+        (colour << 12);
 
     for (int i = 0; i < 16; i++)
         tile[i] = v;
 }
+
 
 /* =========================================================
    TILE GRAPHICS
@@ -82,248 +110,303 @@ static void makeTiles(void)
 {
     u16 *t = (u16 *)CHAR_BASE_ADR(0);
 
-    /* GRASS */
-    fillTile(&t[T_GRASS * 16], 1);
+    /* transparent tile for BG1 */
+    fill(&t[T_EMPTY * 16], 0);
 
-    /* GRASS DETAIL */
-    fillTile(&t[T_GRASS_DETAIL * 16], 1);
 
-    tilePixel(&t[T_GRASS_DETAIL * 16], 1, 2, 2);
-    tilePixel(&t[T_GRASS_DETAIL * 16], 2, 1, 2);
+    /* -----------------------------------------------------
+       GRASS
+       ----------------------------------------------------- */
 
-    tilePixel(&t[T_GRASS_DETAIL * 16], 6, 5, 2);
-    tilePixel(&t[T_GRASS_DETAIL * 16], 5, 6, 2);
+    fill(&t[T_GRASS * 16], 1);
 
-    /* PATH */
-    fillTile(&t[T_PATH * 16], 3);
+    fill(&t[T_GRASS_A * 16], 1);
 
-    tilePixel(&t[T_PATH * 16], 1, 1, 4);
-    tilePixel(&t[T_PATH * 16], 6, 3, 4);
-    tilePixel(&t[T_PATH * 16], 3, 6, 4);
+    px(&t[T_GRASS_A * 16], 1, 6, 2);
+    px(&t[T_GRASS_A * 16], 2, 5, 2);
 
-    /* PATH EDGE */
-    fillTile(&t[T_PATH_EDGE * 16], 1);
+    px(&t[T_GRASS_A * 16], 6, 2, 2);
+    px(&t[T_GRASS_A * 16], 5, 3, 2);
 
-    for (int x = 0; x < 8; x++)
-    {
-        tilePixel(
-            &t[T_PATH_EDGE * 16],
-            x,
-            5,
-            3
-        );
 
-        tilePixel(
-            &t[T_PATH_EDGE * 16],
-            x,
-            6,
-            3
-        );
+    fill(&t[T_GRASS_B * 16], 1);
 
-        tilePixel(
-            &t[T_PATH_EDGE * 16],
-            x,
-            7,
-            3
-        );
-    }
+    px(&t[T_GRASS_B * 16], 2, 2, 14);
+    px(&t[T_GRASS_B * 16], 3, 1, 14);
 
-    /* WALL */
-    fillTile(&t[T_WALL * 16], 5);
+    px(&t[T_GRASS_B * 16], 6, 6, 2);
 
-    for (int x = 0; x < 8; x++)
-    {
-        tilePixel(&t[T_WALL * 16], x, 3, 6);
-        tilePixel(&t[T_WALL * 16], x, 7, 6);
-    }
 
-    /* WALL SHADOW */
-    fillTile(&t[T_WALL_SHADOW * 16], 6);
+    /* -----------------------------------------------------
+       PATH
+       ----------------------------------------------------- */
+
+    fill(&t[T_PATH * 16], 3);
+
+    px(&t[T_PATH * 16], 1, 2, 4);
+    px(&t[T_PATH * 16], 5, 1, 4);
+    px(&t[T_PATH * 16], 3, 6, 4);
+    px(&t[T_PATH * 16], 7, 4, 4);
+
+
+    fill(&t[T_PATH_LIGHT * 16], 3);
+
+    px(&t[T_PATH_LIGHT * 16], 2, 1, 5);
+    px(&t[T_PATH_LIGHT * 16], 6, 5, 5);
+    px(&t[T_PATH_LIGHT * 16], 4, 7, 4);
+
+
+    fill(&t[T_PATH_TOP * 16], 1);
 
     for (int x = 0; x < 8; x++)
     {
-        tilePixel(
-            &t[T_WALL_SHADOW * 16],
-            x,
-            6,
-            7
-        );
-
-        tilePixel(
-            &t[T_WALL_SHADOW * 16],
-            x,
-            7,
-            7
-        );
+        px(&t[T_PATH_TOP * 16], x, 5, 4);
+        px(&t[T_PATH_TOP * 16], x, 6, 3);
+        px(&t[T_PATH_TOP * 16], x, 7, 3);
     }
 
-    /* ROOF */
-    fillTile(&t[T_ROOF * 16], 8);
 
-    for (int y = 1; y < 8; y += 3)
-    {
-        for (int x = 0; x < 8; x++)
-            tilePixel(
-                &t[T_ROOF * 16],
-                x,
-                y,
-                9
-            );
-    }
-
-    /* roof tile vertical breaks */
-    for (int y = 0; y < 8; y++)
-    {
-        if (y < 3)
-            tilePixel(
-                &t[T_ROOF * 16],
-                4,
-                y,
-                10
-            );
-        else if (y >= 4 && y < 7)
-            tilePixel(
-                &t[T_ROOF * 16],
-                2,
-                y,
-                10
-            );
-    }
-
-    /* ROOF LIGHT */
-    fillTile(&t[T_ROOF_LIGHT * 16], 9);
+    fill(&t[T_PATH_BOTTOM * 16], 1);
 
     for (int x = 0; x < 8; x++)
     {
-        tilePixel(
-            &t[T_ROOF_LIGHT * 16],
-            x,
-            6,
-            8
-        );
-
-        tilePixel(
-            &t[T_ROOF_LIGHT * 16],
-            x,
-            7,
-            8
-        );
+        px(&t[T_PATH_BOTTOM * 16], x, 0, 3);
+        px(&t[T_PATH_BOTTOM * 16], x, 1, 3);
+        px(&t[T_PATH_BOTTOM * 16], x, 2, 4);
     }
 
-    /* ROOF EDGE */
-    fillTile(&t[T_ROOF_EDGE * 16], 8);
+
+    /* -----------------------------------------------------
+       HOUSE WALL
+       ----------------------------------------------------- */
+
+    fill(&t[T_WALL * 16], 6);
 
     for (int x = 0; x < 8; x++)
     {
-        tilePixel(
-            &t[T_ROOF_EDGE * 16],
-            x,
-            4,
-            10
-        );
-
-        tilePixel(
-            &t[T_ROOF_EDGE * 16],
-            x,
-            5,
-            10
-        );
-
-        tilePixel(
-            &t[T_ROOF_EDGE * 16],
-            x,
-            6,
-            7
-        );
-
-        tilePixel(
-            &t[T_ROOF_EDGE * 16],
-            x,
-            7,
-            7
-        );
+        px(&t[T_WALL * 16], x, 3, 5);
+        px(&t[T_WALL * 16], x, 7, 5);
     }
 
-    /* DOOR */
-    fillTile(&t[T_DOOR * 16], 11);
+    px(&t[T_WALL * 16], 1, 1, 7);
+    px(&t[T_WALL * 16], 5, 5, 7);
 
-    for (int y = 0; y < 8; y++)
+
+    fill(&t[T_WALL_SHADOW * 16], 5);
+
+    for (int x = 0; x < 8; x++)
     {
-        tilePixel(
-            &t[T_DOOR * 16],
-            0,
-            y,
-            7
-        );
-
-        tilePixel(
-            &t[T_DOOR * 16],
-            7,
-            y,
-            7
-        );
+        px(&t[T_WALL_SHADOW * 16], x, 0, 6);
+        px(&t[T_WALL_SHADOW * 16], x, 1, 6);
+        px(&t[T_WALL_SHADOW * 16], x, 7, 7);
     }
 
-    tilePixel(&t[T_DOOR * 16], 5, 4, 15);
 
-    /* WINDOW */
-    fillTile(&t[T_WINDOW * 16], 5);
+    /* -----------------------------------------------------
+       WINDOW
+       ----------------------------------------------------- */
+
+    fill(&t[T_WINDOW * 16], 6);
 
     for (int y = 1; y <= 6; y++)
     {
         for (int x = 1; x <= 6; x++)
-        {
-            tilePixel(
-                &t[T_WINDOW * 16],
-                x,
-                y,
-                12
-            );
-        }
+            px(&t[T_WINDOW * 16], x, y, 12);
     }
 
     for (int x = 1; x <= 6; x++)
-        tilePixel(
-            &t[T_WINDOW * 16],
-            x,
-            4,
-            13
-        );
+    {
+        px(&t[T_WINDOW * 16], x, 0, 7);
+        px(&t[T_WINDOW * 16], x, 7, 7);
+    }
 
     for (int y = 1; y <= 6; y++)
-        tilePixel(
-            &t[T_WINDOW * 16],
-            4,
-            y,
-            13
-        );
+    {
+        px(&t[T_WINDOW * 16], 0, y, 7);
+        px(&t[T_WINDOW * 16], 7, y, 7);
+    }
 
-    /* TREE LIGHT */
-    fillTile(&t[T_TREE_LIGHT * 16], 1);
+    for (int y = 1; y <= 6; y++)
+        px(&t[T_WINDOW * 16], 4, y, 13);
+
+    for (int x = 1; x <= 6; x++)
+        px(&t[T_WINDOW * 16], x, 4, 13);
+
+
+    /* -----------------------------------------------------
+       DOOR
+       ----------------------------------------------------- */
+
+    fill(&t[T_DOOR * 16], 11);
+
+    for (int y = 0; y < 8; y++)
+    {
+        px(&t[T_DOOR * 16], 0, y, 7);
+        px(&t[T_DOOR * 16], 7, y, 7);
+    }
+
+    for (int x = 0; x < 8; x++)
+        px(&t[T_DOOR * 16], x, 0, 7);
+
+    px(&t[T_DOOR * 16], 5, 4, 15);
+
+
+    /* -----------------------------------------------------
+       ROOF
+       ----------------------------------------------------- */
+
+    fill(&t[T_ROOF * 16], 8);
+
+    for (int y = 1; y < 8; y += 3)
+    {
+        for (int x = 0; x < 8; x++)
+            px(&t[T_ROOF * 16], x, y, 9);
+    }
+
+    px(&t[T_ROOF * 16], 3, 0, 10);
+    px(&t[T_ROOF * 16], 3, 1, 10);
+
+    px(&t[T_ROOF * 16], 6, 4, 10);
+    px(&t[T_ROOF * 16], 6, 5, 10);
+
+
+    fill(&t[T_ROOF_LIGHT * 16], 9);
+
+    for (int x = 0; x < 8; x++)
+    {
+        px(&t[T_ROOF_LIGHT * 16], x, 6, 8);
+        px(&t[T_ROOF_LIGHT * 16], x, 7, 8);
+    }
+
+
+    fill(&t[T_ROOF_DARK * 16], 10);
+
+    for (int x = 0; x < 8; x++)
+        px(&t[T_ROOF_DARK * 16], x, 0, 8);
+
+
+    fill(&t[T_ROOF_EDGE * 16], 8);
+
+    for (int x = 0; x < 8; x++)
+    {
+        px(&t[T_ROOF_EDGE * 16], x, 3, 10);
+        px(&t[T_ROOF_EDGE * 16], x, 4, 10);
+        px(&t[T_ROOF_EDGE * 16], x, 5, 7);
+        px(&t[T_ROOF_EDGE * 16], x, 6, 7);
+        px(&t[T_ROOF_EDGE * 16], x, 7, 7);
+    }
+
+
+    /* roof corners */
+
+    fill(&t[T_ROOF_CORNER_L * 16], 1);
+
+    for (int y = 2; y < 8; y++)
+    {
+        int start = 7 - y;
+
+        if (start < 0)
+            start = 0;
+
+        for (int x = start; x < 8; x++)
+            px(&t[T_ROOF_CORNER_L * 16], x, y, 8);
+    }
+
+    for (int y = 5; y < 8; y++)
+    {
+        for (int x = 0; x < 8; x++)
+        {
+            if (x >= 7 - y)
+                px(&t[T_ROOF_CORNER_L * 16], x, y, 7);
+        }
+    }
+
+
+    fill(&t[T_ROOF_CORNER_R * 16], 1);
+
+    for (int y = 2; y < 8; y++)
+    {
+        int end = y;
+
+        if (end > 7)
+            end = 7;
+
+        for (int x = 0; x <= end; x++)
+            px(&t[T_ROOF_CORNER_R * 16], x, y, 8);
+    }
+
+    for (int y = 5; y < 8; y++)
+    {
+        for (int x = 0; x <= y && x < 8; x++)
+            px(&t[T_ROOF_CORNER_R * 16], x, y, 7);
+    }
+
+
+    /* -----------------------------------------------------
+       TREES
+
+       These tiles are designed to overlap into a larger
+       multi-tile tree instead of looking like a cross.
+       ----------------------------------------------------- */
+
+    fill(&t[T_TREE_LIGHT * 16], 0);
+
+    for (int y = 0; y < 8; y++)
+    {
+        for (int x = 0; x < 8; x++)
+        {
+            int dx = x - 4;
+            int dy = y - 4;
+
+            if (dx * dx + dy * dy <= 22)
+            {
+                u8 c =
+                    ((x + y) % 3 == 0)
+                    ? 15
+                    : 14;
+
+                px(
+                    &t[T_TREE_LIGHT * 16],
+                    x,
+                    y,
+                    c
+                );
+            }
+        }
+    }
+
+    px(&t[T_TREE_LIGHT * 16], 3, 2, 2);
+    px(&t[T_TREE_LIGHT * 16], 5, 4, 2);
+
+
+    fill(&t[T_TREE_MID * 16], 0);
 
     for (int y = 0; y < 8; y++)
     {
         for (int x = 0; x < 8; x++)
         {
             int dx = x - 3;
-            int dy = y - 4;
+            int dy = y - 3;
 
-            if (dx * dx + dy * dy < 19)
+            if (dx * dx + dy * dy <= 25)
             {
-                tilePixel(
-                    &t[T_TREE_LIGHT * 16],
+                u8 c =
+                    ((x + y) & 1)
+                    ? 14
+                    : 15;
+
+                px(
+                    &t[T_TREE_MID * 16],
                     x,
                     y,
-                    ((x + y) & 1)
-                        ? 14
-                        : 15
+                    c
                 );
             }
         }
     }
 
-    /* TREE DARK */
-    fillTile(&t[T_TREE_DARK * 16], 1);
+
+    fill(&t[T_TREE_DARK * 16], 0);
 
     for (int y = 0; y < 8; y++)
     {
@@ -332,56 +415,41 @@ static void makeTiles(void)
             int dx = x - 4;
             int dy = y - 3;
 
-            if (dx * dx + dy * dy < 20)
+            if (dx * dx + dy * dy <= 24)
             {
-                tilePixel(
+                u8 c =
+                    ((x + y) & 1)
+                    ? 14
+                    : 2;
+
+                px(
                     &t[T_TREE_DARK * 16],
                     x,
                     y,
-                    ((x + y) & 1)
-                        ? 14
-                        : 2
+                    c
                 );
             }
         }
     }
 
-    /* TRUNK */
-    fillTile(&t[T_TRUNK * 16], 1);
+
+    fill(&t[T_TRUNK * 16], 0);
 
     for (int y = 0; y < 8; y++)
     {
-        tilePixel(
-            &t[T_TRUNK * 16],
-            3,
-            y,
-            11
-        );
-
-        tilePixel(
-            &t[T_TRUNK * 16],
-            4,
-            y,
-            11
-        );
+        px(&t[T_TRUNK * 16], 3, y, 11);
+        px(&t[T_TRUNK * 16], 4, y, 11);
     }
 
-    tilePixel(
-        &t[T_TRUNK * 16],
-        2,
-        7,
-        11
-    );
+    px(&t[T_TRUNK * 16], 2, 7, 11);
+    px(&t[T_TRUNK * 16], 5, 7, 11);
 
-    tilePixel(
-        &t[T_TRUNK * 16],
-        5,
-        7,
-        11
-    );
 
-    /* BUSH */
-    fillTile(&t[T_BUSH * 16], 1);
+    /* -----------------------------------------------------
+       BUSH
+       ----------------------------------------------------- */
+
+    fill(&t[T_BUSH * 16], 0);
 
     for (int y = 2; y <= 6; y++)
     {
@@ -392,7 +460,7 @@ static void makeTiles(void)
                 (x == 1 || x == 6)
             ))
             {
-                tilePixel(
+                px(
                     &t[T_BUSH * 16],
                     x,
                     y,
@@ -404,172 +472,170 @@ static void makeTiles(void)
         }
     }
 
-    /* FLOWER */
-    fillTile(&t[T_FLOWER * 16], 1);
 
-    tilePixel(&t[T_FLOWER * 16], 2, 2, 10);
-    tilePixel(&t[T_FLOWER * 16], 3, 2, 13);
-    tilePixel(&t[T_FLOWER * 16], 2, 3, 13);
+    /* -----------------------------------------------------
+       FLOWERS
+       ----------------------------------------------------- */
 
-    tilePixel(&t[T_FLOWER * 16], 6, 5, 10);
-    tilePixel(&t[T_FLOWER * 16], 5, 5, 13);
+    fill(&t[T_FLOWER * 16], 0);
 
-    /* HORIZONTAL FENCE */
-    fillTile(&t[T_FENCE_H * 16], 1);
+    px(&t[T_FLOWER * 16], 2, 2, 13);
+    px(&t[T_FLOWER * 16], 3, 2, 10);
+    px(&t[T_FLOWER * 16], 2, 3, 10);
+
+    px(&t[T_FLOWER * 16], 6, 5, 13);
+    px(&t[T_FLOWER * 16], 5, 5, 10);
+
+    px(&t[T_FLOWER * 16], 2, 4, 14);
+    px(&t[T_FLOWER * 16], 5, 7, 14);
+
+
+    /* -----------------------------------------------------
+       FENCES
+       ----------------------------------------------------- */
+
+    fill(&t[T_FENCE_H * 16], 0);
 
     for (int x = 0; x < 8; x++)
     {
-        tilePixel(
-            &t[T_FENCE_H * 16],
-            x,
-            3,
-            11
-        );
-
-        tilePixel(
-            &t[T_FENCE_H * 16],
-            x,
-            5,
-            11
-        );
+        px(&t[T_FENCE_H * 16], x, 3, 11);
+        px(&t[T_FENCE_H * 16], x, 5, 11);
     }
 
-    tilePixel(&t[T_FENCE_H * 16], 1, 1, 11);
-    tilePixel(&t[T_FENCE_H * 16], 1, 7, 11);
 
-    tilePixel(&t[T_FENCE_H * 16], 6, 1, 11);
-    tilePixel(&t[T_FENCE_H * 16], 6, 7, 11);
-
-    /* VERTICAL FENCE */
-    fillTile(&t[T_FENCE_V * 16], 1);
+    fill(&t[T_FENCE_V * 16], 0);
 
     for (int y = 0; y < 8; y++)
     {
-        tilePixel(
-            &t[T_FENCE_V * 16],
-            3,
-            y,
-            11
-        );
-
-        tilePixel(
-            &t[T_FENCE_V * 16],
-            5,
-            y,
-            11
-        );
+        px(&t[T_FENCE_V * 16], 3, y, 11);
+        px(&t[T_FENCE_V * 16], 5, y, 11);
     }
 
-    /* WATER */
-    fillTile(&t[T_WATER * 16], 12);
 
-    tilePixel(&t[T_WATER * 16], 1, 2, 13);
-    tilePixel(&t[T_WATER * 16], 2, 2, 13);
+    fill(&t[T_FENCE_POST * 16], 0);
 
-    tilePixel(&t[T_WATER * 16], 5, 6, 13);
-    tilePixel(&t[T_WATER * 16], 6, 6, 13);
+    for (int y = 1; y < 8; y++)
+    {
+        px(&t[T_FENCE_POST * 16], 2, y, 11);
+        px(&t[T_FENCE_POST * 16], 3, y, 11);
+        px(&t[T_FENCE_POST * 16], 4, y, 11);
+        px(&t[T_FENCE_POST * 16], 5, y, 11);
+    }
 
-    /* WATER LIGHT */
-    fillTile(&t[T_WATER_LIGHT * 16], 12);
+    for (int x = 1; x <= 6; x++)
+        px(&t[T_FENCE_POST * 16], x, 1, 7);
+
+
+    /* -----------------------------------------------------
+       WATER
+       ----------------------------------------------------- */
+
+    fill(&t[T_WATER * 16], 12);
+
+    px(&t[T_WATER * 16], 1, 2, 13);
+    px(&t[T_WATER * 16], 2, 2, 13);
+
+    px(&t[T_WATER * 16], 5, 6, 13);
+    px(&t[T_WATER * 16], 6, 6, 13);
+
+
+    fill(&t[T_WATER_SHINE * 16], 12);
 
     for (int x = 1; x <= 5; x++)
-        tilePixel(
-            &t[T_WATER_LIGHT * 16],
-            x,
-            3,
-            13
-        );
+        px(&t[T_WATER_SHINE * 16], x, 3, 13);
 
     for (int x = 3; x <= 7; x++)
-        tilePixel(
-            &t[T_WATER_LIGHT * 16],
-            x,
-            7,
-            13
-        );
+        px(&t[T_WATER_SHINE * 16], x, 7, 13);
 
-    /* WATER EDGE */
-    fillTile(&t[T_WATER_EDGE * 16], 1);
+
+    fill(&t[T_BANK_TOP * 16], 4);
 
     for (int x = 0; x < 8; x++)
     {
-        tilePixel(
-            &t[T_WATER_EDGE * 16],
-            x,
-            5,
-            4
-        );
-
-        tilePixel(
-            &t[T_WATER_EDGE * 16],
-            x,
-            6,
-            12
-        );
-
-        tilePixel(
-            &t[T_WATER_EDGE * 16],
-            x,
-            7,
-            12
-        );
+        px(&t[T_BANK_TOP * 16], x, 5, 3);
+        px(&t[T_BANK_TOP * 16], x, 6, 12);
+        px(&t[T_BANK_TOP * 16], x, 7, 12);
     }
 
-    /* STONE */
-    fillTile(&t[T_STONE * 16], 1);
 
-    for (int y = 4; y <= 6; y++)
+    fill(&t[T_BANK_BOTTOM * 16], 12);
+
+    for (int x = 0; x < 8; x++)
     {
-        for (int x = 2; x <= 5; x++)
-            tilePixel(
-                &t[T_STONE * 16],
-                x,
-                y,
-                6
-            );
+        px(&t[T_BANK_BOTTOM * 16], x, 5, 4);
+        px(&t[T_BANK_BOTTOM * 16], x, 6, 3);
+        px(&t[T_BANK_BOTTOM * 16], x, 7, 1);
     }
 
-    /* SIGN */
-    fillTile(&t[T_SIGN * 16], 1);
 
-    for (int y = 1; y <= 4; y++)
-    {
-        for (int x = 1; x <= 6; x++)
-            tilePixel(
-                &t[T_SIGN * 16],
-                x,
-                y,
-                11
-            );
-    }
+    /* -----------------------------------------------------
+       SOIL
+       ----------------------------------------------------- */
 
-    tilePixel(&t[T_SIGN * 16], 3, 5, 11);
-    tilePixel(&t[T_SIGN * 16], 4, 5, 11);
-    tilePixel(&t[T_SIGN * 16], 3, 6, 11);
-    tilePixel(&t[T_SIGN * 16], 4, 6, 11);
-    tilePixel(&t[T_SIGN * 16], 3, 7, 11);
-    tilePixel(&t[T_SIGN * 16], 4, 7, 11);
-
-    /* GARDEN SOIL */
-    fillTile(&t[T_GARDEN * 16], 4);
+    fill(&t[T_SOIL * 16], 4);
 
     for (int y = 1; y < 8; y += 3)
     {
         for (int x = 0; x < 8; x++)
-            tilePixel(
-                &t[T_GARDEN * 16],
-                x,
-                y,
-                3
-            );
+            px(&t[T_SOIL * 16], x, y, 3);
     }
+
+
+    /* -----------------------------------------------------
+       STONE
+       ----------------------------------------------------- */
+
+    fill(&t[T_STONE * 16], 0);
+
+    for (int y = 3; y <= 6; y++)
+    {
+        for (int x = 2; x <= 5; x++)
+            px(&t[T_STONE * 16], x, y, 5);
+    }
+
+    px(&t[T_STONE * 16], 3, 3, 6);
+    px(&t[T_STONE * 16], 4, 3, 6);
+
+
+    /* -----------------------------------------------------
+       SIGN
+       ----------------------------------------------------- */
+
+    fill(&t[T_SIGN * 16], 0);
+
+    for (int y = 1; y <= 4; y++)
+    {
+        for (int x = 1; x <= 6; x++)
+            px(&t[T_SIGN * 16], x, y, 11);
+    }
+
+    px(&t[T_SIGN * 16], 2, 2, 7);
+    px(&t[T_SIGN * 16], 5, 2, 7);
+
+    px(&t[T_SIGN * 16], 3, 5, 11);
+    px(&t[T_SIGN * 16], 4, 5, 11);
+    px(&t[T_SIGN * 16], 3, 6, 11);
+    px(&t[T_SIGN * 16], 4, 6, 11);
+    px(&t[T_SIGN * 16], 3, 7, 11);
+    px(&t[T_SIGN * 16], 4, 7, 11);
 }
 
+
 /* =========================================================
-   MAP ACCESS
+   TWO BACKGROUND MAPS
+
+   BG0 = ground / buildings / trunks
+   BG1 = foreground canopy / roof overhangs / decoration
+
+   Both are 64x32 maps.
    ========================================================= */
 
-static void setMap(int x, int y, int tile)
+static void setMapBlock(
+    int bg,
+    int x,
+    int y,
+    int tile
+)
 {
     if (
         x < 0 ||
@@ -579,17 +645,24 @@ static void setMap(int x, int y, int tile)
     )
         return;
 
+    int base;
+
+    if (bg == 0)
+        base = 28;
+    else
+        base = 30;
+
     if (x < 32)
     {
         u16 *map =
-            (u16 *)SCREEN_BASE_BLOCK(30);
+            (u16 *)SCREEN_BASE_BLOCK(base);
 
         map[y * 32 + x] = tile;
     }
     else
     {
         u16 *map =
-            (u16 *)SCREEN_BASE_BLOCK(31);
+            (u16 *)SCREEN_BASE_BLOCK(base + 1);
 
         map[
             y * 32 +
@@ -598,7 +671,42 @@ static void setMap(int x, int y, int tile)
     }
 }
 
-static int getMap(int x, int y)
+
+static void ground(
+    int x,
+    int y,
+    int tile
+)
+{
+    setMapBlock(
+        0,
+        x,
+        y,
+        tile
+    );
+}
+
+
+static void foreground(
+    int x,
+    int y,
+    int tile
+)
+{
+    setMapBlock(
+        1,
+        x,
+        y,
+        tile
+    );
+}
+
+
+static void setSolid(
+    int x,
+    int y,
+    int solid
+)
 {
     if (
         x < 0 ||
@@ -606,31 +714,17 @@ static int getMap(int x, int y)
         x >= MAP_W ||
         y >= MAP_H
     )
-        return T_WALL;
+        return;
 
-    if (x < 32)
-    {
-        u16 *map =
-            (u16 *)SCREEN_BASE_BLOCK(30);
-
-        return
-            map[y * 32 + x]
-            & 0x3FF;
-    }
-
-    u16 *map =
-        (u16 *)SCREEN_BASE_BLOCK(31);
-
-    return
-        map[
-            y * 32 +
-            (x - 32)
-        ]
-        & 0x3FF;
+    collision[y][x] =
+        solid ? 1 : 0;
 }
+
 
 /* =========================================================
    HOUSE
+
+   Wider, with roof overhang and independent collision.
    ========================================================= */
 
 static void makeHouse(
@@ -643,48 +737,54 @@ static void makeHouse(
         x + width - 1;
 
     /*
-       Roof highlight
+       roof top
     */
 
+    foreground(
+        x - 1,
+        y + 1,
+        T_ROOF_CORNER_L
+    );
+
+    foreground(
+        right + 1,
+        y + 1,
+        T_ROOF_CORNER_R
+    );
+
     for (
-        int xx = x + 1;
-        xx < right;
+        int xx = x;
+        xx <= right;
         xx++
     )
     {
-        setMap(
+        foreground(
             xx,
             y,
             T_ROOF_LIGHT
         );
+
+        foreground(
+            xx,
+            y + 1,
+            T_ROOF
+        );
+
+        foreground(
+            xx,
+            y + 2,
+            T_ROOF
+        );
+
+        foreground(
+            xx,
+            y + 3,
+            T_ROOF_DARK
+        );
     }
 
     /*
-       Main roof
-    */
-
-    for (
-        int yy = y + 1;
-        yy <= y + 3;
-        yy++
-    )
-    {
-        for (
-            int xx = x;
-            xx <= right;
-            xx++
-        )
-        {
-            setMap(
-                xx,
-                yy,
-                T_ROOF
-            );
-        }
-    }
-
-    /*
-       Roof overhang
+       roof overhang
     */
 
     for (
@@ -693,7 +793,7 @@ static void makeHouse(
         xx++
     )
     {
-        setMap(
+        foreground(
             xx,
             y + 4,
             T_ROOF_EDGE
@@ -701,7 +801,7 @@ static void makeHouse(
     }
 
     /*
-       Facade
+       facade
     */
 
     for (
@@ -716,16 +816,22 @@ static void makeHouse(
             xx++
         )
         {
-            setMap(
+            ground(
                 xx,
                 yy,
                 T_WALL
+            );
+
+            setSolid(
+                xx,
+                yy,
+                1
             );
         }
     }
 
     /*
-       Bottom shadow
+       shadow base
     */
 
     for (
@@ -734,7 +840,7 @@ static void makeHouse(
         xx++
     )
     {
-        setMap(
+        ground(
             xx,
             y + 8,
             T_WALL_SHADOW
@@ -742,67 +848,67 @@ static void makeHouse(
     }
 
     /*
-       Windows
+       windows
     */
 
-    setMap(
+    ground(
         x + 1,
         y + 6,
         T_WINDOW
     );
 
-    setMap(
+    ground(
         x + 2,
         y + 6,
         T_WINDOW
     );
 
-    setMap(
+    ground(
         right - 2,
         y + 6,
         T_WINDOW
     );
 
-    setMap(
+    ground(
         right - 1,
         y + 6,
         T_WINDOW
     );
 
     /*
-       Door position
+       door
     */
 
-    int doorX =
+    int door =
         x + width / 2 - 1;
 
-    setMap(
-        doorX,
+    ground(
+        door,
         y + 7,
         T_DOOR
     );
 
-    setMap(
-        doorX + 1,
+    ground(
+        door + 1,
         y + 7,
         T_DOOR
     );
 
-    setMap(
-        doorX,
+    ground(
+        door,
         y + 8,
         T_DOOR
     );
 
-    setMap(
-        doorX + 1,
+    ground(
+        door + 1,
         y + 8,
         T_DOOR
     );
 
     /*
-       IMPORTANT:
-       Always clear a path in front of door.
+       Door tiles themselves remain blocked for now.
+       The path IN FRONT is guaranteed clear.
     */
 
     for (
@@ -811,22 +917,67 @@ static void makeHouse(
         yy++
     )
     {
-        setMap(
-            doorX,
+        ground(
+            door,
             yy,
             T_PATH
         );
 
-        setMap(
-            doorX + 1,
+        ground(
+            door + 1,
             yy,
-            T_PATH
+            T_PATH_LIGHT
         );
+
+        setSolid(
+            door,
+            yy,
+            0
+        );
+
+        setSolid(
+            door + 1,
+            yy,
+            0
+        );
+    }
+
+    /*
+       roof collision
+    */
+
+    for (
+        int yy = y;
+        yy <= y + 4;
+        yy++
+    )
+    {
+        for (
+            int xx = x - 1;
+            xx <= right + 1;
+            xx++
+        )
+        {
+            setSolid(
+                xx,
+                yy,
+                1
+            );
+        }
     }
 }
 
+
 /* =========================================================
-   BIG TREE
+   TREE
+
+   32x40-ish visual tree.
+
+   Trunk lives on BG0.
+   Canopy lives on BG1.
+
+   This means the player can visually pass underneath
+   the lower crown instead of every tree being a flat block.
    ========================================================= */
 
 static void makeTree(
@@ -835,72 +986,150 @@ static void makeTree(
 )
 {
     /*
-       24 px wide crown.
+       trunk
     */
 
-    setMap(
+    ground(
+        x + 1,
+        y + 3,
+        T_TRUNK
+    );
+
+    ground(
+        x + 2,
+        y + 3,
+        T_TRUNK
+    );
+
+    /*
+       lower dark foliage
+    */
+
+    foreground(
+        x,
+        y + 2,
+        T_TREE_DARK
+    );
+
+    foreground(
+        x + 1,
+        y + 2,
+        T_TREE_MID
+    );
+
+    foreground(
+        x + 2,
+        y + 2,
+        T_TREE_MID
+    );
+
+    foreground(
+        x + 3,
+        y + 2,
+        T_TREE_DARK
+    );
+
+    /*
+       middle crown
+    */
+
+    foreground(
+        x,
+        y + 1,
+        T_TREE_MID
+    );
+
+    foreground(
+        x + 1,
+        y + 1,
+        T_TREE_LIGHT
+    );
+
+    foreground(
+        x + 2,
+        y + 1,
+        T_TREE_LIGHT
+    );
+
+    foreground(
+        x + 3,
+        y + 1,
+        T_TREE_MID
+    );
+
+    /*
+       upper crown
+    */
+
+    foreground(
         x + 1,
         y,
         T_TREE_LIGHT
     );
 
-    setMap(
-        x,
-        y + 1,
-        T_TREE_LIGHT
-    );
-
-    setMap(
-        x + 1,
-        y + 1,
-        T_TREE_DARK
-    );
-
-    setMap(
+    foreground(
         x + 2,
-        y + 1,
+        y,
         T_TREE_LIGHT
     );
 
-    setMap(
-        x,
-        y + 2,
-        T_TREE_DARK
-    );
+    /*
+       Collision only around trunk/base.
+    */
 
-    setMap(
-        x + 1,
-        y + 2,
-        T_TREE_LIGHT
-    );
-
-    setMap(
-        x + 2,
-        y + 2,
-        T_TREE_DARK
-    );
-
-    setMap(
+    setSolid(
         x + 1,
         y + 3,
-        T_TRUNK
+        1
+    );
+
+    setSolid(
+        x + 2,
+        y + 3,
+        1
     );
 }
 
+
 /* =========================================================
-   FENCED GARDEN
+   BUSH
    ========================================================= */
 
-static void makeGarden(
+static void makeBush(
+    int x,
+    int y
+)
+{
+    foreground(
+        x,
+        y,
+        T_BUSH
+    );
+
+    setSolid(
+        x,
+        y,
+        1
+    );
+}
+
+
+/* =========================================================
+   FENCE
+
+   Gate stays open.
+   ========================================================= */
+
+static void makeFenceYard(
     int x,
     int y,
     int w,
     int h,
-    int gateX
+    int gate
 )
 {
     /*
-       Soil inside.
+       soil / lawn beds
     */
 
     for (
@@ -915,16 +1144,21 @@ static void makeGarden(
             xx++
         )
         {
-            setMap(
-                xx,
-                yy,
-                T_GARDEN
-            );
+            if (
+                (xx + yy) % 3 == 0
+            )
+            {
+                ground(
+                    xx,
+                    yy,
+                    T_SOIL
+                );
+            }
         }
     }
 
     /*
-       Top fence.
+       top
     */
 
     for (
@@ -933,15 +1167,21 @@ static void makeGarden(
         xx++
     )
     {
-        setMap(
+        foreground(
             xx,
             y,
             T_FENCE_H
         );
+
+        setSolid(
+            xx,
+            y,
+            1
+        );
     }
 
     /*
-       Bottom fence with gate.
+       bottom + gate
     */
 
     for (
@@ -951,85 +1191,121 @@ static void makeGarden(
     )
     {
         if (
-            xx != gateX &&
-            xx != gateX + 1
+            xx == gate ||
+            xx == gate + 1
         )
-        {
-            setMap(
-                xx,
-                y + h - 1,
-                T_FENCE_H
-            );
-        }
+            continue;
+
+        foreground(
+            xx,
+            y + h - 1,
+            T_FENCE_H
+        );
+
+        setSolid(
+            xx,
+            y + h - 1,
+            1
+        );
     }
 
     /*
-       Sides.
+       sides
     */
 
     for (
-        int yy = y + 1;
-        yy < y + h - 1;
+        int yy = y;
+        yy < y + h;
         yy++
     )
     {
-        setMap(
+        foreground(
             x,
             yy,
             T_FENCE_V
         );
 
-        setMap(
+        foreground(
             x + w - 1,
             yy,
             T_FENCE_V
         );
-    }
 
-    /*
-       Flowers inside garden.
-    */
-
-    if (w > 5 && h > 4)
-    {
-        setMap(
-            x + 2,
-            y + 2,
-            T_FLOWER
+        setSolid(
+            x,
+            yy,
+            1
         );
 
-        setMap(
-            x + 3,
-            y + 2,
-            T_FLOWER
-        );
-
-        setMap(
-            x + w - 3,
-            y + h - 3,
-            T_FLOWER
+        setSolid(
+            x + w - 1,
+            yy,
+            1
         );
     }
 
     /*
-       Gate area stays walkable.
+       posts
     */
 
-    setMap(
-        gateX,
-        y + h - 1,
-        T_PATH
+    foreground(
+        x,
+        y,
+        T_FENCE_POST
     );
 
-    setMap(
-        gateX + 1,
+    foreground(
+        x + w - 1,
+        y,
+        T_FENCE_POST
+    );
+
+    foreground(
+        x,
         y + h - 1,
-        T_PATH
+        T_FENCE_POST
+    );
+
+    foreground(
+        x + w - 1,
+        y + h - 1,
+        T_FENCE_POST
+    );
+
+    /*
+       gate clear
+    */
+
+    foreground(
+        gate,
+        y + h - 1,
+        T_EMPTY
+    );
+
+    foreground(
+        gate + 1,
+        y + h - 1,
+        T_EMPTY
+    );
+
+    setSolid(
+        gate,
+        y + h - 1,
+        0
+    );
+
+    setSolid(
+        gate + 1,
+        y + h - 1,
+        0
     );
 }
 
+
 /* =========================================================
    POND
+
+   Larger irregular pond.
    ========================================================= */
 
 static void makePond(
@@ -1040,7 +1316,64 @@ static void makePond(
 )
 {
     /*
-       Top bank.
+       water body
+    */
+
+    for (
+        int yy = y;
+        yy < y + h;
+        yy++
+    )
+    {
+        for (
+            int xx = x;
+            xx < x + w;
+            xx++
+        )
+        {
+            int edge =
+                xx == x ||
+                xx == x + w - 1 ||
+                yy == y ||
+                yy == y + h - 1;
+
+            if (edge)
+            {
+                /*
+                   Rounded corners stay grass.
+                */
+
+                int corner =
+                    (xx == x ||
+                     xx == x + w - 1) &&
+                    (yy == y ||
+                     yy == y + h - 1);
+
+                if (corner)
+                    continue;
+            }
+
+            int tile =
+                ((xx + yy) % 4 == 0)
+                ? T_WATER_SHINE
+                : T_WATER;
+
+            ground(
+                xx,
+                yy,
+                tile
+            );
+
+            setSolid(
+                xx,
+                yy,
+                1
+            );
+        }
+    }
+
+    /*
+       top bank
     */
 
     for (
@@ -1049,19 +1382,45 @@ static void makePond(
         xx++
     )
     {
-        setMap(
+        ground(
             xx,
             y,
-            T_WATER_EDGE
+            T_BANK_TOP
         );
     }
 
     /*
-       Water.
+       bottom bank
     */
 
     for (
-        int yy = y + 1;
+        int xx = x + 1;
+        xx < x + w - 1;
+        xx++
+    )
+    {
+        ground(
+            xx,
+            y + h - 1,
+            T_BANK_BOTTOM
+        );
+    }
+}
+
+
+/* =========================================================
+   FLOWER PATCH
+   ========================================================= */
+
+static void flowers(
+    int x,
+    int y,
+    int w,
+    int h
+)
+{
+    for (
+        int yy = y;
         yy < y + h;
         yy++
     )
@@ -1073,54 +1432,19 @@ static void makePond(
         )
         {
             if (
-                ((xx + yy) & 3) == 0
+                ((xx + yy) & 1) == 0
             )
             {
-                setMap(
+                foreground(
                     xx,
                     yy,
-                    T_WATER_LIGHT
-                );
-            }
-            else
-            {
-                setMap(
-                    xx,
-                    yy,
-                    T_WATER
+                    T_FLOWER
                 );
             }
         }
     }
-
-    /*
-       Make corners less rectangular.
-    */
-
-    setMap(
-        x,
-        y,
-        T_GRASS
-    );
-
-    setMap(
-        x + w - 1,
-        y,
-        T_GRASS
-    );
-
-    setMap(
-        x,
-        y + h - 1,
-        T_GRASS
-    );
-
-    setMap(
-        x + w - 1,
-        y + h - 1,
-        T_GRASS
-    );
 }
+
 
 /* =========================================================
    WORLD
@@ -1129,7 +1453,7 @@ static void makePond(
 static void makeWorld(void)
 {
     /*
-       Base grass.
+       clear collision and maps
     */
 
     for (
@@ -1144,56 +1468,41 @@ static void makeWorld(void)
             x++
         )
         {
-            if (
-                (x * 7 + y * 11)
-                % 31 == 0
-            )
-            {
-                setMap(
-                    x,
-                    y,
-                    T_GRASS_DETAIL
-                );
-            }
-            else
-            {
-                setMap(
-                    x,
-                    y,
-                    T_GRASS
-                );
-            }
-        }
-    }
+            collision[y][x] = 0;
 
-    /*
-       Main road.
-       24 px wide.
-    */
+            int grassTile =
+                T_GRASS;
 
-    for (
-        int y = 15;
-        y <= 17;
-        y++
-    )
-    {
-        for (
-            int x = 0;
-            x < MAP_W;
-            x++
-        )
-        {
-            setMap(
+            int n =
+                (x * 13 +
+                 y * 7) % 37;
+
+            if (n == 0)
+                grassTile =
+                    T_GRASS_A;
+
+            if (n == 11)
+                grassTile =
+                    T_GRASS_B;
+
+            ground(
                 x,
                 y,
-                T_PATH
+                grassTile
+            );
+
+            foreground(
+                x,
+                y,
+                T_EMPTY
             );
         }
     }
 
-    /*
-       Horizontal borders.
-    */
+
+    /* =====================================================
+       MAIN EAST/WEST ROAD
+       ===================================================== */
 
     for (
         int x = 0;
@@ -1201,40 +1510,75 @@ static void makeWorld(void)
         x++
     )
     {
-        setMap(
+        ground(
             x,
             14,
-            T_PATH_EDGE
+            T_PATH_TOP
+        );
+
+        ground(
+            x,
+            15,
+            T_PATH
+        );
+
+        ground(
+            x,
+            16,
+            ((x & 3) == 0)
+                ? T_PATH_LIGHT
+                : T_PATH
+        );
+
+        ground(
+            x,
+            17,
+            T_PATH
+        );
+
+        ground(
+            x,
+            18,
+            T_PATH_BOTTOM
         );
     }
 
-    /*
-       Vertical main path.
-    */
+
+    /* =====================================================
+       NORTH/SOUTH ROAD
+       ===================================================== */
 
     for (
-        int x = 30;
-        x <= 32;
-        x++
+        int y = 0;
+        y < MAP_H;
+        y++
     )
     {
-        for (
-            int y = 0;
-            y < MAP_H;
-            y++
-        )
-        {
-            setMap(
-                x,
-                y,
-                T_PATH
-            );
-        }
+        ground(
+            30,
+            y,
+            T_PATH
+        );
+
+        ground(
+            31,
+            y,
+            ((y & 3) == 0)
+                ? T_PATH_LIGHT
+                : T_PATH
+        );
+
+        ground(
+            32,
+            y,
+            T_PATH
+        );
     }
 
-    /*
-       NORTH DISTRICT
-    */
+
+    /* =====================================================
+       NORTH HOUSES
+       ===================================================== */
 
     makeHouse(
         3,
@@ -1260,187 +1604,172 @@ static void makeWorld(void)
         10
     );
 
-    /*
-       Gardens between houses.
-    */
 
-    makeGarden(
+    /* =====================================================
+       NORTH GARDENS
+       ===================================================== */
+
+    makeFenceYard(
         13,
+        5,
         4,
-        4,
-        8,
+        7,
         14
     );
 
-    makeGarden(
+    flowers(
+        14,
+        7,
+        2,
+        3
+    );
+
+
+    makeFenceYard(
         46,
+        5,
         4,
-        4,
-        8,
+        7,
         47
     );
 
-    /*
-       IMPORTANT:
-       Restore all northern door approaches
-       AFTER gardens/decorations.
-    */
+    flowers(
+        47,
+        7,
+        2,
+        3
+    );
 
-    for (
-        int y = 12;
-        y <= 14;
-        y++
-    )
-    {
-        setMap(
-            6,
-            y,
-            T_PATH
-        );
 
-        setMap(
-            7,
-            y,
-            T_PATH
-        );
+    /* =====================================================
+       TREE GROUPS
 
-        setMap(
-            21,
-            y,
-            T_PATH
-        );
-
-        setMap(
-            22,
-            y,
-            T_PATH
-        );
-
-        setMap(
-            39,
-            y,
-            T_PATH
-        );
-
-        setMap(
-            40,
-            y,
-            T_PATH
-        );
-
-        setMap(
-            54,
-            y,
-            T_PATH
-        );
-
-        setMap(
-            55,
-            y,
-            T_PATH
-        );
-    }
-
-    /*
-       Trees around north properties,
-       never in door paths.
-    */
+       Deliberately uneven spacing.
+       ===================================================== */
 
     makeTree(
         0,
-        2
+        0
     );
 
     makeTree(
-        28,
-        2
+        27,
+        1
     );
 
     makeTree(
-        61,
-        2
+        60,
+        0
     );
 
-    /*
-       Bushes along gardens.
-    */
-
-    setMap(
+    makeTree(
         12,
-        10,
-        T_BUSH
+        0
     );
 
-    setMap(
-        16,
-        10,
-        T_BUSH
-    );
-
-    setMap(
+    makeTree(
         45,
-        10,
-        T_BUSH
+        0
     );
 
-    setMap(
-        49,
-        10,
-        T_BUSH
-    );
 
     /*
-       SOUTH DISTRICT
+       Decorative bushes, not at doors.
     */
+
+    makeBush(
+        1,
+        12
+    );
+
+    makeBush(
+        11,
+        12
+    );
+
+    makeBush(
+        25,
+        12
+    );
+
+    makeBush(
+        37,
+        12
+    );
+
+    makeBush(
+        44,
+        12
+    );
+
+    makeBush(
+        58,
+        12
+    );
+
+
+    /* =====================================================
+       SOUTH HOUSES
+       ===================================================== */
 
     makeHouse(
-        4,
-        21,
+        3,
+        22,
         10
     );
 
     makeHouse(
-        19,
-        21,
+        18,
+        22,
         9
     );
 
     makeHouse(
-        36,
-        21,
-        10
+        38,
+        22,
+        9
     );
 
     makeHouse(
-        51,
-        21,
-        10
+        52,
+        22,
+        9
     );
 
-    /*
-       Pond / park.
-       Positioned between road and homes
-       without blocking entrances.
-    */
+
+    /* =====================================================
+       PARK / POND
+       ===================================================== */
 
     makePond(
         29,
-        20,
-        6,
+        21,
+        7,
         8
     );
 
+
+    flowers(
+        27,
+        21,
+        2,
+        4
+    );
+
+    flowers(
+        36,
+        22,
+        2,
+        3
+    );
+
+
     /*
-       Trees around park.
+       Park trees.
     */
 
     makeTree(
-        0,
-        20
-    );
-
-    makeTree(
-        15,
+        14,
         20
     );
 
@@ -1450,118 +1779,127 @@ static void makeWorld(void)
     );
 
     makeTree(
-        61,
-        20
+        0,
+        21
     );
 
-    /*
-       Southern fenced gardens.
-    */
+    makeTree(
+        60,
+        21
+    );
 
-    makeGarden(
+
+    /* =====================================================
+       SMALL SOUTH GARDENS
+       ===================================================== */
+
+    makeFenceYard(
         4,
-        29,
-        10,
-        3,
-        8
-    );
-
-    makeGarden(
-        37,
         29,
         9,
         3,
-        40
+        7
     );
 
-    /*
-       Park flowers.
-    */
+    makeFenceYard(
+        39,
+        29,
+        8,
+        3,
+        42
+    );
 
-    setMap(
+
+    /* =====================================================
+       PROPS
+       ===================================================== */
+
+    foreground(
         27,
-        20,
-        T_FLOWER
-    );
-
-    setMap(
-        27,
-        21,
-        T_FLOWER
-    );
-
-    setMap(
-        35,
-        20,
-        T_FLOWER
-    );
-
-    setMap(
-        35,
-        21,
-        T_FLOWER
-    );
-
-    /*
-       Stones.
-    */
-
-    setMap(
-        26,
-        19,
-        T_STONE
-    );
-
-    setMap(
-        36,
-        19,
-        T_STONE
-    );
-
-    /*
-       Town sign.
-    */
-
-    setMap(
-        34,
         13,
         T_SIGN
     );
 
-    /*
-       FINAL DOOR SAFETY PASS.
+    setSolid(
+        27,
+        13,
+        1
+    );
 
-       Anything previously drawn in front
-       of north-facing houses gets replaced
-       by walkable path.
-    */
+
+    foreground(
+        37,
+        20,
+        T_STONE
+    );
+
+    foreground(
+        24,
+        20,
+        T_STONE
+    );
+
+
+    /* =====================================================
+       FINAL DOOR SAFETY PASS
+
+       This runs LAST.
+
+       No bush, fence, flower or tree can remain in these
+       approaches.
+       ===================================================== */
+
+    const int northDoors[8] =
+    {
+        6, 7,
+        21, 22,
+        39, 40,
+        54, 55
+    };
 
     for (
-        int y = 12;
-        y <= 14;
-        y++
+        int i = 0;
+        i < 8;
+        i++
     )
     {
-        setMap(6, y, T_PATH);
-        setMap(7, y, T_PATH);
+        int x =
+            northDoors[i];
 
-        setMap(21, y, T_PATH);
-        setMap(22, y, T_PATH);
+        for (
+            int y = 12;
+            y <= 14;
+            y++
+        )
+        {
+            ground(
+                x,
+                y,
+                T_PATH
+            );
 
-        setMap(39, y, T_PATH);
-        setMap(40, y, T_PATH);
+            foreground(
+                x,
+                y,
+                T_EMPTY
+            );
 
-        setMap(54, y, T_PATH);
-        setMap(55, y, T_PATH);
+            setSolid(
+                x,
+                y,
+                0
+            );
+        }
     }
 
+
     /*
-       Keep center intersection completely clear.
+       Central intersection is always free.
     */
 
     for (
         int y = 13;
-        y <= 18;
+        y <= 19;
         y++
     )
     {
@@ -1571,59 +1909,59 @@ static void makeWorld(void)
             x++
         )
         {
-            setMap(
+            ground(
                 x,
                 y,
                 T_PATH
+            );
+
+            foreground(
+                x,
+                y,
+                T_EMPTY
+            );
+
+            setSolid(
+                x,
+                y,
+                0
             );
         }
     }
 }
 
+
 /* =========================================================
    COLLISION
    ========================================================= */
 
-static int solidTile(
+static int solidAt(
     int tx,
     int ty
 )
 {
-    int t =
-        getMap(
-            tx,
-            ty
-        );
-
     if (
-        t == T_WALL ||
-        t == T_WALL_SHADOW ||
-        t == T_ROOF ||
-        t == T_ROOF_LIGHT ||
-        t == T_ROOF_EDGE ||
-        t == T_TREE_LIGHT ||
-        t == T_TREE_DARK ||
-        t == T_TRUNK ||
-        t == T_BUSH ||
-        t == T_FENCE_H ||
-        t == T_FENCE_V ||
-        t == T_WATER ||
-        t == T_WATER_LIGHT ||
-        t == T_WATER_EDGE ||
-        t == T_SIGN
+        tx < 0 ||
+        ty < 0 ||
+        tx >= MAP_W ||
+        ty >= MAP_H
     )
-    {
         return 1;
-    }
 
-    return 0;
+    return
+        collision[ty][tx];
 }
+
 
 static int blocked(
     int x,
     int y
 )
 {
+    /*
+       Only player's feet collide.
+    */
+
     int left =
         x + 4;
 
@@ -1637,7 +1975,7 @@ static int blocked(
         y + 28;
 
     if (
-        solidTile(
+        solidAt(
             left / 8,
             top / 8
         )
@@ -1645,7 +1983,7 @@ static int blocked(
         return 1;
 
     if (
-        solidTile(
+        solidAt(
             right / 8,
             top / 8
         )
@@ -1653,7 +1991,7 @@ static int blocked(
         return 1;
 
     if (
-        solidTile(
+        solidAt(
             left / 8,
             bottom / 8
         )
@@ -1661,7 +1999,7 @@ static int blocked(
         return 1;
 
     if (
-        solidTile(
+        solidAt(
             right / 8,
             bottom / 8
         )
@@ -1671,15 +2009,16 @@ static int blocked(
     return 0;
 }
 
+
 /* =========================================================
-   PLAYER
+   PLAYER GRAPHICS
    ========================================================= */
 
 static void objPixel(
     u16 *base,
     int x,
     int y,
-    u8 c
+    u8 colour
 )
 {
     if (
@@ -1702,19 +2041,18 @@ static void objPixel(
     int localY =
         y & 7;
 
-    int tileNumber =
+    int tile =
         tileY * 2 +
         tileX;
 
-    tilePixel(
-        &base[
-            tileNumber * 16
-        ],
+    px(
+        &base[tile * 16],
         localX,
         localY,
-        c
+        colour
     );
 }
+
 
 static void clearPlayer(
     u16 *base
@@ -1725,12 +2063,11 @@ static void clearPlayer(
         i < 128;
         i++
     )
-    {
         base[i] = 0;
-    }
 }
 
-static void drawPlayer(
+
+static void playerFrame(
     u16 *base,
     int direction,
     int frame
@@ -1746,11 +2083,12 @@ static void drawPlayer(
     int shirt = 4;
     int pants = 5;
     int shoes = 6;
-    int highlight = 7;
+    int shine = 7;
     int shadow = 8;
 
+
     /*
-       Shadow
+       ground shadow
     */
 
     for (
@@ -1758,17 +2096,16 @@ static void drawPlayer(
         x <= 11;
         x++
     )
-    {
         objPixel(
             base,
             x,
             29,
             shadow
         );
-    }
+
 
     /*
-       Head
+       head
     */
 
     for (
@@ -1782,18 +2119,17 @@ static void drawPlayer(
             x <= 10;
             x++
         )
-        {
             objPixel(
                 base,
                 x,
                 y,
                 skin
             );
-        }
     }
 
+
     /*
-       Hair
+       hair
     */
 
     for (
@@ -1831,8 +2167,9 @@ static void drawPlayer(
         hair
     );
 
+
     /*
-       Directional face
+       face direction
     */
 
     if (
@@ -1864,14 +2201,12 @@ static void drawPlayer(
             x <= 10;
             x++
         )
-        {
             objPixel(
                 base,
                 x,
                 10,
                 hair
             );
-        }
     }
     else if (
         direction ==
@@ -1895,8 +2230,9 @@ static void drawPlayer(
         );
     }
 
+
     /*
-       Body
+       shirt
     */
 
     for (
@@ -1910,38 +2246,37 @@ static void drawPlayer(
             x <= 10;
             x++
         )
-        {
             objPixel(
                 base,
                 x,
                 y,
                 shirt
             );
-        }
     }
 
     objPixel(
         base,
         6,
         15,
-        highlight
+        shine
     );
 
     objPixel(
         base,
         6,
         16,
-        highlight
+        shine
     );
 
+
     /*
-       Arms
+       arms
     */
 
-    int armA =
+    int a =
         frame ? 1 : 0;
 
-    int armB =
+    int b =
         frame ? 0 : 1;
 
     for (
@@ -1953,34 +2288,35 @@ static void drawPlayer(
         objPixel(
             base,
             3,
-            y + armA,
+            y + a,
             skin
         );
 
         objPixel(
             base,
             4,
-            y + armA,
+            y + a,
             skin
         );
 
         objPixel(
             base,
             11,
-            y + armB,
+            y + b,
             skin
         );
 
         objPixel(
             base,
             12,
-            y + armB,
+            y + b,
             skin
         );
     }
 
+
     /*
-       Pants
+       waist
     */
 
     for (
@@ -1994,18 +2330,17 @@ static void drawPlayer(
             x <= 10;
             x++
         )
-        {
             objPixel(
                 base,
                 x,
                 y,
                 pants
             );
-        }
     }
 
+
     /*
-       Walking legs
+       legs
     */
 
     if (
@@ -2170,38 +2505,45 @@ static void drawPlayer(
     }
 }
 
+
 /* =========================================================
    PALETTES
    ========================================================= */
 
-static void setupPalettes(void)
+static void makePalettes(void)
 {
+    /*
+       BG palette
+
+       0 must be transparent on BG1.
+    */
+
     BG_PALETTE[0] =
         RGB5(0,0,0);
 
     /* grass */
     BG_PALETTE[1] =
-        RGB5(9,23,9);
+        RGB5(10,23,10);
 
     BG_PALETTE[2] =
-        RGB5(5,17,6);
+        RGB5(6,18,7);
 
-    /* paths / soil */
+    /* path */
     BG_PALETTE[3] =
-        RGB5(24,20,12);
+        RGB5(25,21,13);
 
     BG_PALETTE[4] =
-        RGB5(29,25,16);
+        RGB5(29,25,17);
 
-    /* walls */
+    /* building */
     BG_PALETTE[5] =
-        RGB5(28,24,18);
+        RGB5(25,21,15);
 
     BG_PALETTE[6] =
-        RGB5(22,18,13);
+        RGB5(29,25,19);
 
     BG_PALETTE[7] =
-        RGB5(15,12,9);
+        RGB5(16,12,8);
 
     /* roof */
     BG_PALETTE[8] =
@@ -2217,22 +2559,23 @@ static void setupPalettes(void)
     BG_PALETTE[11] =
         RGB5(12,7,3);
 
-    /* water */
+    /* water/window */
     BG_PALETTE[12] =
         RGB5(7,18,28);
 
     BG_PALETTE[13] =
-        RGB5(17,27,31);
+        RGB5(18,28,31);
 
-    /* vegetation */
+    /* foliage */
     BG_PALETTE[14] =
-        RGB5(4,17,5);
+        RGB5(3,16,5);
 
     BG_PALETTE[15] =
-        RGB5(10,28,10);
+        RGB5(9,27,10);
+
 
     /*
-       Player palette
+       Player
     */
 
     SPRITE_PALETTE[0] =
@@ -2263,8 +2606,9 @@ static void setupPalettes(void)
         RGB5(4,12,4);
 }
 
+
 /* =========================================================
-   HELPERS
+   CLAMP
    ========================================================= */
 
 static int clampInt(
@@ -2273,18 +2617,15 @@ static int clampInt(
     int max
 )
 {
-    if (
-        value < min
-    )
+    if (value < min)
         return min;
 
-    if (
-        value > max
-    )
+    if (value > max)
         return max;
 
     return value;
 }
+
 
 /* =========================================================
    MAIN
@@ -2298,53 +2639,97 @@ int main(void)
         IRQ_VBLANK
     );
 
+
+    /*
+       Mode 0:
+       BG0 ground
+       BG1 foreground
+       OBJ player
+    */
+
     SetMode(
         MODE_0 |
         BG0_ON |
+        BG1_ON |
         OBJ_ON |
         OBJ_1D_MAP
     );
 
-    setupPalettes();
+
+    makePalettes();
+
+
+    /*
+       BG0:
+       screen blocks 28 + 29
+       lower priority
+    */
 
     REG_BG0CNT =
-        BG_PRIORITY(1) |
+        BG_PRIORITY(2) |
+        CHAR_BASE(0) |
+        SCREEN_BASE(28) |
+        BG_16_COLOR |
+        BG_SIZE_1;
+
+
+    /*
+       BG1:
+       screen blocks 30 + 31
+       higher priority than sprite.
+
+       Transparent colour 0 allows the player
+       and BG0 to show through empty areas.
+    */
+
+    REG_BG1CNT =
+        BG_PRIORITY(0) |
         CHAR_BASE(0) |
         SCREEN_BASE(30) |
         BG_16_COLOR |
         BG_SIZE_1;
 
+
     makeTiles();
 
     makeWorld();
 
+
+    /*
+       Player
+    */
+
     u16 *playerTiles =
         (u16 *)SPRITE_GFX;
 
-    /*
-       Start at center intersection.
-    */
+    int playerX =
+        244;
 
-    int playerX = 244;
-    int playerY = 92;
+    int playerY =
+        92;
 
     int direction =
         DIR_DOWN;
 
-    int moving = 0;
+    int moving =
+        0;
 
-    int walkFrame = 0;
+    int walkFrame =
+        0;
 
-    int walkTimer = 0;
+    int walkTimer =
+        0;
 
-    drawPlayer(
+
+    playerFrame(
         playerTiles,
         direction,
         0
     );
 
+
     /*
-       Disable unused sprites.
+       Disable unused sprites
     */
 
     for (
@@ -2361,6 +2746,7 @@ int main(void)
         OAM[i].attr2 = 0;
     }
 
+
     while (1)
     {
         VBlankIntrWait();
@@ -2370,16 +2756,19 @@ int main(void)
         u16 keys =
             keysHeld();
 
+
         int nx =
             playerX;
 
         int ny =
             playerY;
 
-        moving = 0;
+        moving =
+            0;
+
 
         /*
-           Movement.
+           Cardinal movement
         */
 
         if (
@@ -2427,6 +2816,7 @@ int main(void)
             moving = 1;
         }
 
+
         nx =
             clampInt(
                 nx,
@@ -2441,8 +2831,9 @@ int main(void)
                 WORLD_H - 32
             );
 
+
         /*
-           Collision separately on X/Y.
+           Collision
         */
 
         if (
@@ -2467,8 +2858,9 @@ int main(void)
                 ny;
         }
 
+
         /*
-           Walk animation.
+           animation
         */
 
         if (
@@ -2493,7 +2885,8 @@ int main(void)
             walkFrame = 0;
         }
 
-        drawPlayer(
+
+        playerFrame(
             playerTiles,
             direction,
             moving
@@ -2501,8 +2894,9 @@ int main(void)
                 : 0
         );
 
+
         /*
-           Camera.
+           camera
         */
 
         int cameraX =
@@ -2514,6 +2908,7 @@ int main(void)
             playerY +
             16 -
             SCREEN_H / 2;
+
 
         cameraX =
             clampInt(
@@ -2531,15 +2926,26 @@ int main(void)
                 SCREEN_H
             );
 
+
+        /*
+           Both layers scroll together.
+        */
+
         REG_BG0HOFS =
             cameraX;
 
         REG_BG0VOFS =
             cameraY;
 
+        REG_BG1HOFS =
+            cameraX;
+
+        REG_BG1VOFS =
+            cameraY;
+
+
         /*
-           Convert world position
-           to screen position.
+           player screen position
         */
 
         int screenX =
@@ -2550,9 +2956,6 @@ int main(void)
             playerY -
             cameraY;
 
-        /*
-           Player sprite.
-        */
 
         OAM[0].attr0 =
             ATTR0_COLOR_16 |
@@ -2563,9 +2966,16 @@ int main(void)
             ATTR1_SIZE_32 |
             (screenX & 0x1FF);
 
+        /*
+           Priority 1:
+           BG1 priority 0 can cover player.
+           BG0 priority 2 stays behind player.
+        */
+
         OAM[0].attr2 =
-            ATTR2_PRIORITY(0);
+            ATTR2_PRIORITY(1);
     }
+
 
     return 0;
 }

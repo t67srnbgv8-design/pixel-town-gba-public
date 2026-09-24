@@ -5,450 +5,410 @@
 
 u16 worldMap[META_MAP_H][META_MAP_W];
 
-static void putMeta(
+static void put(
     int x,
     int y,
     int id
 )
 {
-    if (x < 0 || x >= META_MAP_W)
-        return;
-
-    if (y < 0 || y >= META_MAP_H)
+    if (x < 0 ||
+        y < 0 ||
+        x >= META_MAP_W ||
+        y >= META_MAP_H)
         return;
 
     worldMap[y][x] = id;
 }
 
-static void makeHouse(
+static void house(
     int x,
     int y,
-    int width
+    int w
 )
 {
-    if (width < 3)
-        return;
+    /*
+       Upper roof
+    */
 
-    putMeta(x,y,META_ROOF_TL);
-
-    for (int i=1; i<width-1; i++)
-        putMeta(x+i,y,META_ROOF_T);
-
-    putMeta(
-        x+width-1,
+    put(
+        x,
         y,
-        META_ROOF_TR
+        META_ROOF_LEFT
     );
 
-    putMeta(x,y+1,META_ROOF_L);
-
-    for (int i=1; i<width-1; i++)
-        putMeta(x+i,y+1,META_ROOF_M);
-
-    putMeta(
-        x+width-1,
-        y+1,
-        META_ROOF_R
-    );
-
-    putMeta(x,y+2,META_ROOF_BL);
-
-    for (int i=1; i<width-1; i++)
-        putMeta(x+i,y+2,META_ROOF_B);
-
-    putMeta(
-        x+width-1,
-        y+2,
-        META_ROOF_BR
-    );
-
-    for (int i=0; i<width; i++)
-        putMeta(
+    for (int i=1; i<w-1; i++)
+        put(
             x+i,
-            y+3,
+            y,
+            META_ROOF_MIDDLE
+        );
+
+    put(
+        x+w-1,
+        y,
+        META_ROOF_RIGHT
+    );
+
+    /*
+       Lower roof
+    */
+
+    put(
+        x,
+        y+1,
+        META_ROOF_LOW_LEFT
+    );
+
+    for (int i=1; i<w-1; i++)
+        put(
+            x+i,
+            y+1,
+            META_ROOF_LOW_MIDDLE
+        );
+
+    put(
+        x+w-1,
+        y+1,
+        META_ROOF_LOW_RIGHT
+    );
+
+    /*
+       Facade
+    */
+
+    for (int i=0; i<w; i++)
+        put(
+            x+i,
+            y+2,
             META_WALL
         );
 
-    if (width >= 5) {
-        putMeta(
+    if (w >= 5) {
+        put(
             x+1,
-            y+3,
+            y+2,
             META_WINDOW
         );
 
-        putMeta(
-            x+width-2,
-            y+3,
+        put(
+            x+w-2,
+            y+2,
             META_WINDOW
         );
     }
 
-    putMeta(
-        x + width/2,
-        y+3,
+    put(
+        x+w/2,
+        y+2,
         META_DOOR
     );
 
     /*
-       short entrance path
+       Entrance
     */
 
-    putMeta(
-        x + width/2,
-        y+4,
+    put(
+        x+w/2,
+        y+3,
         META_PATH
     );
 
-    putMeta(
-        x + width/2,
-        y+5,
+    put(
+        x+w/2,
+        y+4,
         META_PATH
     );
 }
 
-static void makeTree(
+static void tree(
     int x,
     int y
 )
 {
-    putMeta(
+    put(
         x,
         y,
-        META_TREE_TOP_L
+        META_TREE_TOP_LEFT
     );
 
-    putMeta(
+    put(
         x+1,
         y,
-        META_TREE_TOP_R
+        META_TREE_TOP_RIGHT
     );
 
-    putMeta(
+    put(
         x,
         y+1,
-        META_TREE_BOTTOM_L
+        META_TREE_LOW_LEFT
     );
 
-    putMeta(
+    put(
         x+1,
         y+1,
-        META_TREE_BOTTOM_R
+        META_TREE_LOW_RIGHT
     );
-}
-
-static void makePond(
-    int x,
-    int y,
-    int w,
-    int h
-)
-{
-    for (int yy=0; yy<h; yy++) {
-        for (int xx=0; xx<w; xx++) {
-
-            int id = META_WATER;
-
-            if (yy == 0)
-                id = META_WATER_TOP;
-
-            if (yy == h-1)
-                id = META_WATER_BOTTOM;
-
-            if (xx == 0)
-                id = META_WATER_LEFT;
-
-            if (xx == w-1)
-                id = META_WATER_RIGHT;
-
-            putMeta(
-                x+xx,
-                y+yy,
-                id
-            );
-        }
-    }
 }
 
 void worldInit(void)
 {
     /*
-       Base grass
+       Clean grass base.
+
+       Only sparse variation.
+       No checkerboard.
     */
 
     for (int y=0; y<META_MAP_H; y++) {
         for (int x=0; x<META_MAP_W; x++) {
 
-            int n =
-                (x * 17 +
-                 y * 31) % 19;
+            worldMap[y][x] =
+                META_GRASS;
 
-            if (n == 3)
+            if (
+                ((x*13 + y*7) % 29)
+                == 4
+            )
                 worldMap[y][x] =
-                    META_GRASS_A;
-
-            else if (n == 8)
-                worldMap[y][x] =
-                    META_GRASS_B;
-
-            else
-                worldMap[y][x] =
-                    META_GRASS;
+                    META_GRASS_DETAIL;
         }
     }
 
     /*
-       Main horizontal road.
-
-       Much narrower than v10.
+       Main road
     */
 
     for (int x=0; x<META_MAP_W; x++) {
-
-        putMeta(
+        put(
             x,
             8,
-            META_PATH_TOP
+            META_PATH_EDGE
         );
 
-        putMeta(
+        put(
             x,
             9,
             META_PATH
         );
-
-        putMeta(
-            x,
-            10,
-            META_PATH_BOTTOM
-        );
     }
 
     /*
-       Vertical town path.
+       Vertical road
     */
 
-    for (int y=0; y<META_MAP_H; y++) {
-        putMeta(
+    for (int y=5; y<16; y++) {
+        put(
             15,
+            y,
+            META_PATH
+        );
+
+        put(
+            16,
             y,
             META_PATH
         );
     }
 
     /*
-       Houses.
+       Two compact houses.
 
-       Smaller and much closer to
-       classic handheld RPG scale.
+       5 metatiles = 80 pixels wide.
     */
 
-    makeHouse(
-        2,
-        2,
+    house(
+        4,
+        3,
         5
     );
 
-    makeHouse(
-        9,
-        2,
-        5
-    );
-
-    makeHouse(
-        18,
-        2,
-        5
-    );
-
-    makeHouse(
-        25,
-        2,
+    house(
+        22,
+        3,
         5
     );
 
     /*
-       Trees around town.
+       Tree groups.
+
+       Not placed on a rigid grid.
     */
 
-    makeTree(0,0);
-    makeTree(6,0);
-    makeTree(16,0);
-    makeTree(23,0);
-    makeTree(30,0);
+    tree(0,1);
+    tree(2,0);
 
-    makeTree(1,12);
-    makeTree(5,13);
-    makeTree(10,12);
+    tree(10,1);
+    tree(12,2);
 
-    makeTree(20,12);
-    makeTree(25,13);
-    makeTree(29,12);
+    tree(18,1);
+    tree(28,1);
+
+    tree(1,11);
+    tree(4,12);
+
+    tree(25,11);
+    tree(29,12);
 
     /*
-       Pond / park
+       Gardens.
+
+       Flowers are BG0.
     */
 
-    makePond(
-        13,
-        12,
-        5,
-        3
-    );
+    put(9,6,META_FLOWER);
+    put(10,6,META_FLOWER);
+    put(11,6,META_BUSH);
+
+    put(20,6,META_BUSH);
+    put(21,6,META_FLOWER);
+    put(22,6,META_FLOWER);
 
     /*
-       Bushes
-    */
-
-    putMeta(7,6,META_BUSH);
-    putMeta(8,6,META_BUSH);
-
-    putMeta(23,6,META_BUSH);
-    putMeta(24,6,META_BUSH);
-
-    putMeta(3,7,META_FLOWER);
-    putMeta(4,7,META_FLOWER);
-
-    putMeta(27,7,META_FLOWER);
-    putMeta(28,7,META_FLOWER);
-
-    /*
-       Small fences.
+       Fences
     */
 
     for (int x=7; x<=11; x++)
-        putMeta(
+        put(
             x,
             11,
-            META_FENCE_H
+            META_FENCE
         );
 
     for (int x=21; x<=25; x++)
-        putMeta(
+        put(
             x,
             11,
-            META_FENCE_H
+            META_FENCE
         );
+
+    /*
+       Small pond
+    */
+
+    for (int y=12; y<=14; y++) {
+        for (int x=13; x<=18; x++) {
+
+            if (y == 12)
+                put(
+                    x,y,
+                    META_WATER_EDGE
+                );
+            else
+                put(
+                    x,y,
+                    META_WATER
+                );
+        }
+    }
 }
 
-static void writeScreenTile(
+static void writeTile(
     volatile u16 *left,
     volatile u16 *right,
-    int tx,
-    int ty,
-    u16 tile
+    int x,
+    int y,
+    int tile
 )
 {
-    if (tx < 32)
+    if (x < 32)
         left[
-            ty * 32 + tx
+            y*32+x
         ] = tile;
     else
         right[
-            ty * 32 +
-            (tx - 32)
+            y*32+(x-32)
         ] = tile;
 }
 
 void worldDraw(void)
 {
-    volatile u16 *bottomLeft =
+    volatile u16 *bg0L =
         SCREEN_BASE_BLOCK(28);
 
-    volatile u16 *bottomRight =
+    volatile u16 *bg0R =
         SCREEN_BASE_BLOCK(29);
 
-    volatile u16 *topLeft =
+    volatile u16 *bg1L =
         SCREEN_BASE_BLOCK(30);
 
-    volatile u16 *topRight =
+    volatile u16 *bg1R =
         SCREEN_BASE_BLOCK(31);
 
     for (int i=0; i<1024; i++) {
-        bottomLeft[i] = 0;
-        bottomRight[i] = 0;
+        bg0L[i] = 0;
+        bg0R[i] = 0;
 
-        topLeft[i] = 0;
-        topRight[i] = 0;
+        bg1L[i] = 0;
+        bg1R[i] = 0;
     }
 
-    /*
-       Each 16x16 metatile becomes
-       four 8x8 hardware BG tiles.
-    */
-
-    for (int my=0; my<META_MAP_H; my++) {
-        for (int mx=0; mx<META_MAP_W; mx++) {
-
+    for (int my=0;
+         my<META_MAP_H;
+         my++)
+    {
+        for (int mx=0;
+             mx<META_MAP_W;
+             mx++)
+        {
             int id =
                 worldMap[my][mx];
 
             Metatile *m =
                 &metatiles[id];
 
-            int tx = mx * 2;
-            int ty = my * 2;
+            int tx = mx*2;
+            int ty = my*2;
 
-            writeScreenTile(
-                bottomLeft,
-                bottomRight,
-                tx,
-                ty,
+            writeTile(
+                bg0L,bg0R,
+                tx,ty,
                 m->bottom[0]
             );
 
-            writeScreenTile(
-                bottomLeft,
-                bottomRight,
-                tx+1,
-                ty,
+            writeTile(
+                bg0L,bg0R,
+                tx+1,ty,
                 m->bottom[1]
             );
 
-            writeScreenTile(
-                bottomLeft,
-                bottomRight,
-                tx,
-                ty+1,
+            writeTile(
+                bg0L,bg0R,
+                tx,ty+1,
                 m->bottom[2]
             );
 
-            writeScreenTile(
-                bottomLeft,
-                bottomRight,
-                tx+1,
-                ty+1,
+            writeTile(
+                bg0L,bg0R,
+                tx+1,ty+1,
                 m->bottom[3]
             );
 
-            writeScreenTile(
-                topLeft,
-                topRight,
-                tx,
-                ty,
+            /*
+               ONLY intentional overhead
+               graphics reach BG1.
+            */
+
+            writeTile(
+                bg1L,bg1R,
+                tx,ty,
                 m->top[0]
             );
 
-            writeScreenTile(
-                topLeft,
-                topRight,
-                tx+1,
-                ty,
+            writeTile(
+                bg1L,bg1R,
+                tx+1,ty,
                 m->top[1]
             );
 
-            writeScreenTile(
-                topLeft,
-                topRight,
-                tx,
-                ty+1,
+            writeTile(
+                bg1L,bg1R,
+                tx,ty+1,
                 m->top[2]
             );
 
-            writeScreenTile(
-                topLeft,
-                topRight,
-                tx+1,
-                ty+1,
+            writeTile(
+                bg1L,bg1R,
+                tx+1,ty+1,
                 m->top[3]
             );
         }
@@ -460,10 +420,12 @@ int worldIsBlocked(
     int pixelY
 )
 {
-    if (pixelX < 0 ||
+    if (
+        pixelX < 0 ||
         pixelY < 0 ||
         pixelX >= WORLD_W ||
-        pixelY >= WORLD_H)
+        pixelY >= WORLD_H
+    )
         return 1;
 
     int mx =
@@ -472,9 +434,8 @@ int worldIsBlocked(
     int my =
         pixelY >> 4;
 
-    int id =
-        worldMap[my][mx];
-
     return
-        metatiles[id].collision;
+        metatiles[
+            worldMap[my][mx]
+        ].collision;
 }

@@ -1,359 +1,596 @@
 #include <gba.h>
 
-#define SCREEN_W 240
-#define SCREEN_H 160
+#define MAP_W 32
+#define MAP_H 32
+
+#define TILE_GRASS 0
+#define TILE_GRASS_DOT 1
+#define TILE_ROAD 2
+#define TILE_ROAD_EDGE 3
+#define TILE_WATER 4
+#define TILE_WALL 5
+#define TILE_ROOF 6
+#define TILE_DOOR 7
+#define TILE_TREE 8
+#define TILE_FLOWER 9
+
+#define DIR_DOWN  0
+#define DIR_UP    1
+#define DIR_LEFT  2
+#define DIR_RIGHT 3
 
 typedef struct {
-    int x, y, w, h;
+    int x;
+    int y;
+    int w;
+    int h;
 } Rect;
 
-/* Mode 4: zwei Framebuffer-Seiten */
-static volatile u16 *backBuffer = (volatile u16 *)0x0600A000;
-static int showingPage = 0;
+/* ---------------------------------------------------------
+   Hintergrund-Tiles
+   4bpp: 8x8 Pixel = 32 Bytes pro Tile
+   --------------------------------------------------------- */
 
-static inline u8 rgb8(int r, int g, int b) {
-    /* 8-Bit Palettenindex wird separat vergeben */
-    return 0;
+static void setTilePixel(u16 *tile, int x, int y, u8 color) {
+    int pixel = y * 8 + x;
+    int word = pixel >> 2;
+    int shift = (pixel & 3) * 4;
+
+    tile[word] &= ~(0xF << shift);
+    tile[word] |= (color & 0xF) << shift;
 }
 
-static void putPixel(int x, int y, u8 color) {
-    if (x < 0 || x >= SCREEN_W || y < 0 || y >= SCREEN_H)
-        return;
+static void fillTile(u16 *tile, u8 color) {
+    u16 value =
+        color |
+        (color << 4) |
+        (color << 8) |
+        (color << 12);
 
-    /*
-     * Mode 4 speichert zwei 8-Bit Pixel in einem u16.
-     */
-    int index = y * SCREEN_W + x;
-    int halfword = index >> 1;
-
-    u16 old = backBuffer[halfword];
-
-    if (x & 1)
-        old = (old & 0x00FF) | ((u16)color << 8);
-    else
-        old = (old & 0xFF00) | color;
-
-    backBuffer[halfword] = old;
+    for (int i = 0; i < 16; i++)
+        tile[i] = value;
 }
 
-static void rectFill(int x, int y, int w, int h, u8 color) {
-    for (int yy = y; yy < y + h; yy++) {
-        if (yy < 0 || yy >= SCREEN_H)
-            continue;
+static void createBackgroundTiles(void) {
+    u16 *tiles = (u16 *)CHAR_BASE_ADR(0);
 
-        for (int xx = x; xx < x + w; xx++) {
-            if (xx < 0 || xx >= SCREEN_W)
-                continue;
+    /* Gras */
+    fillTile(&tiles[TILE_GRASS * 16], 1);
 
-            putPixel(xx, yy, color);
-        }
-    }
-}
+    /* Gras mit kleinen Details */
+    fillTile(&tiles[TILE_GRASS_DOT * 16], 1);
+    setTilePixel(&tiles[TILE_GRASS_DOT * 16], 2, 2, 2);
+    setTilePixel(&tiles[TILE_GRASS_DOT * 16], 6, 5, 2);
 
-static void clearScreen(u8 color) {
-    u16 packed = color | ((u16)color << 8);
+    /* Straße */
+    fillTile(&tiles[TILE_ROAD * 16], 3);
 
-    for (int i = 0; i < (SCREEN_W * SCREEN_H) / 2; i++)
-        backBuffer[i] = packed;
-}
+    /* Straßenrand */
+    fillTile(&tiles[TILE_ROAD_EDGE * 16], 3);
+    for (int x = 0; x < 8; x++)
+        setTilePixel(&tiles[TILE_ROAD_EDGE * 16], x, 0, 4);
 
-static void tree(int x, int y) {
-    rectFill(x + 6, y + 15, 4, 8, 6);
+    /* Wasser */
+    fillTile(&tiles[TILE_WATER * 16], 5);
+    for (int x = 0; x < 8; x += 3)
+        setTilePixel(&tiles[TILE_WATER * 16], x, 3, 6);
 
-    rectFill(x + 3, y + 4, 10, 14, 3);
-    rectFill(x, y + 8, 16, 8, 3);
+    /* Hauswand */
+    fillTile(&tiles[TILE_WALL * 16], 7);
+    for (int x = 0; x < 8; x++)
+        setTilePixel(&tiles[TILE_WALL * 16], x, 7, 8);
 
-    rectFill(x + 4, y + 3, 8, 13, 4);
-    rectFill(x + 2, y + 8, 12, 6, 4);
-
-    rectFill(x + 5, y + 5, 4, 4, 5);
-}
-
-static void house(int x, int y, int style) {
-    u8 wall = style ? 15 : 12;
-    u8 roof = style ? 14 : 10;
-
-    rectFill(x + 3, y + 15, 42, 29, wall);
-
-    rectFill(x, y + 10, 48, 8, 9);
-    rectFill(x + 4, y + 6, 40, 8, roof);
-    rectFill(x + 9, y + 2, 30, 7, roof);
-
-    /* Fenster */
-    rectFill(x + 7, y + 23, 10, 10, 16);
-    rectFill(x + 9, y + 25, 6, 6, 17);
-
-    rectFill(x + 31, y + 23, 10, 10, 16);
-    rectFill(x + 33, y + 25, 6, 6, 17);
+    /* Dach */
+    fillTile(&tiles[TILE_ROOF * 16], 9);
+    for (int x = 0; x < 8; x += 2)
+        setTilePixel(&tiles[TILE_ROOF * 16], x, 2, 10);
 
     /* Tür */
-    rectFill(x + 20, y + 29, 9, 15, 11);
-    putPixel(x + 27, y + 36, 18);
-}
+    fillTile(&tiles[TILE_DOOR * 16], 11);
+    setTilePixel(&tiles[TILE_DOOR * 16], 6, 4, 12);
 
-static void player(int x, int y, int step) {
-    /* Haare */
-    rectFill(x + 4, y, 8, 3, 20);
+    /* Baum */
+    fillTile(&tiles[TILE_TREE * 16], 1);
 
-    /* Kopf-Rand */
-    rectFill(x + 2, y + 3, 12, 7, 19);
-
-    /* Gesicht */
-    rectFill(x + 4, y + 3, 8, 7, 21);
-    rectFill(x + 4, y + 3, 8, 2, 20);
-
-    /* Körper */
-    rectFill(x + 2, y + 10, 12, 10, 19);
-    rectFill(x + 4, y + 10, 8, 9, 22);
-
-    /* Arme */
-    rectFill(x, y + 11, 4, 8, 21);
-    rectFill(x + 12, y + 11, 4, 8, 21);
-
-    /* Hose */
-    rectFill(x + 3, y + 19, 10, 4, 23);
-
-    if (step) {
-        rectFill(x + 2, y + 22, 4, 7, 23);
-        rectFill(x + 10, y + 22, 4, 5, 23);
-
-        rectFill(x + 1, y + 28, 5, 3, 19);
-        rectFill(x + 10, y + 26, 5, 3, 19);
-    } else {
-        rectFill(x + 3, y + 22, 4, 7, 23);
-        rectFill(x + 9, y + 22, 4, 7, 23);
-
-        rectFill(x + 2, y + 28, 5, 3, 19);
-        rectFill(x + 9, y + 28, 5, 3, 19);
+    for (int y = 0; y < 6; y++) {
+        for (int x = 1; x < 7; x++) {
+            if ((x + y) % 2)
+                setTilePixel(&tiles[TILE_TREE * 16], x, y, 13);
+            else
+                setTilePixel(&tiles[TILE_TREE * 16], x, y, 14);
+        }
     }
+
+    setTilePixel(&tiles[TILE_TREE * 16], 3, 6, 15);
+    setTilePixel(&tiles[TILE_TREE * 16], 4, 6, 15);
+    setTilePixel(&tiles[TILE_TREE * 16], 3, 7, 15);
+    setTilePixel(&tiles[TILE_TREE * 16], 4, 7, 15);
+
+    /* Blumen */
+    fillTile(&tiles[TILE_FLOWER * 16], 1);
+
+    setTilePixel(&tiles[TILE_FLOWER * 16], 2, 3, 10);
+    setTilePixel(&tiles[TILE_FLOWER * 16], 3, 3, 12);
+    setTilePixel(&tiles[TILE_FLOWER * 16], 6, 6, 10);
 }
 
-static int overlap(Rect a, Rect b) {
-    return
-        a.x < b.x + b.w &&
-        a.x + a.w > b.x &&
-        a.y < b.y + b.h &&
-        a.y + a.h > b.y;
+/* ---------------------------------------------------------
+   Welt
+   --------------------------------------------------------- */
+
+static void setMapTile(int x, int y, int tile) {
+    if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H)
+        return;
+
+    u16 *map = (u16 *)SCREEN_BASE_BLOCK(31);
+    map[y * MAP_W + x] = tile;
 }
 
-static int blocked(int x, int y) {
-    Rect p = {x + 2, y + 16, 12, 15};
-
-    Rect house1 = {18, 18, 48, 44};
-    Rect house2 = {171, 17, 48, 44};
-
-    Rect tree1 = {7, 92, 16, 23};
-    Rect tree2 = {30, 112, 16, 23};
-    Rect tree3 = {199, 91, 16, 23};
-    Rect tree4 = {216, 112, 16, 23};
-
-    if (x < 0 || x > SCREEN_W - 16)
-        return 1;
-
-    if (y < 0 || y > SCREEN_H - 31)
-        return 1;
-
-    if (overlap(p, house1)) return 1;
-    if (overlap(p, house2)) return 1;
-
-    if (overlap(p, tree1)) return 1;
-    if (overlap(p, tree2)) return 1;
-    if (overlap(p, tree3)) return 1;
-    if (overlap(p, tree4)) return 1;
-
-    return 0;
-}
-
-static void drawWorld(void) {
-    clearScreen(1);
-
-    /* Gras-Struktur */
-    for (int y = 4; y < SCREEN_H; y += 16) {
-        for (int x = 5; x < SCREEN_W; x += 19) {
-            rectFill(x, y, 2, 2, 2);
+static void createWorld(void) {
+    for (int y = 0; y < MAP_H; y++) {
+        for (int x = 0; x < MAP_W; x++) {
+            if ((x + y * 3) % 11 == 0)
+                setMapTile(x, y, TILE_GRASS_DOT);
+            else
+                setMapTile(x, y, TILE_GRASS);
         }
     }
 
     /* Horizontale Straße */
-    rectFill(0, 68, SCREEN_W, 39, 7);
-    rectFill(0, 71, SCREEN_W, 2, 8);
-    rectFill(0, 102, SCREEN_W, 2, 8);
+    for (int y = 9; y <= 13; y++) {
+        for (int x = 0; x < MAP_W; x++)
+            setMapTile(x, y, TILE_ROAD);
+    }
 
     /* Vertikale Straße */
-    rectFill(103, 0, 35, SCREEN_H, 7);
-    rectFill(106, 0, 2, SCREEN_H, 8);
-    rectFill(133, 0, 2, SCREEN_H, 8);
+    for (int x = 13; x <= 16; x++) {
+        for (int y = 0; y < MAP_H; y++)
+            setMapTile(x, y, TILE_ROAD);
+    }
 
-    /* Dorfplatz */
-    rectFill(88, 59, 65, 57, 7);
-    rectFill(94, 65, 53, 45, 8);
+    /* Haus links */
+    for (int x = 3; x <= 8; x++) {
+        setMapTile(x, 2, TILE_ROOF);
+        setMapTile(x, 3, TILE_ROOF);
+    }
 
-    /* Häuser */
-    house(18, 18, 0);
-    house(171, 17, 1);
+    for (int y = 4; y <= 7; y++) {
+        for (int x = 3; x <= 8; x++)
+            setMapTile(x, y, TILE_WALL);
+    }
+
+    setMapTile(5, 7, TILE_DOOR);
+
+    /* Haus rechts */
+    for (int x = 21; x <= 26; x++) {
+        setMapTile(x, 2, TILE_ROOF);
+        setMapTile(x, 3, TILE_ROOF);
+    }
+
+    for (int y = 4; y <= 7; y++) {
+        for (int x = 21; x <= 26; x++)
+            setMapTile(x, y, TILE_WALL);
+    }
+
+    setMapTile(24, 7, TILE_DOOR);
 
     /* Bäume */
-    tree(7, 92);
-    tree(30, 112);
-    tree(199, 91);
-    tree(216, 112);
+    setMapTile(2, 15, TILE_TREE);
+    setMapTile(4, 17, TILE_TREE);
+    setMapTile(26, 15, TILE_TREE);
+    setMapTile(28, 17, TILE_TREE);
 
-    /* Zäune */
-    for (int x = 52; x < 94; x += 8) {
-        rectFill(x, 126, 3, 13, 6);
-        rectFill(x, 130, 8, 3, 6);
-    }
-
-    for (int x = 151; x < 193; x += 8) {
-        rectFill(x, 126, 3, 13, 6);
-        rectFill(x, 130, 8, 3, 6);
-    }
+    setMapTile(1, 19, TILE_TREE);
+    setMapTile(29, 20, TILE_TREE);
 
     /* Blumen */
-    for (int x = 62; x < 90; x += 9) {
-        putPixel(x, 148, 24);
-        putPixel(x + 1, 148, 25);
-    }
+    for (int x = 7; x <= 11; x++)
+        setMapTile(x, 18, TILE_FLOWER);
 
-    for (int x = 154; x < 188; x += 9) {
-        putPixel(x, 148, 26);
-        putPixel(x + 1, 148, 25);
-    }
+    for (int x = 19; x <= 23; x++)
+        setMapTile(x, 18, TILE_FLOWER);
 }
 
-static void flip(void) {
-    VBlankIntrWait();
+/* ---------------------------------------------------------
+   Kollision
+   --------------------------------------------------------- */
 
-    if (showingPage == 0) {
-        REG_DISPCNT |= BACKBUFFER;
-        showingPage = 1;
-        backBuffer = (volatile u16 *)0x06000000;
+static int solidTile(int tx, int ty) {
+    if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H)
+        return 1;
+
+    u16 *map = (u16 *)SCREEN_BASE_BLOCK(31);
+    int tile = map[ty * MAP_W + tx] & 0x3FF;
+
+    if (tile == TILE_WALL)
+        return 1;
+
+    if (tile == TILE_ROOF)
+        return 1;
+
+    if (tile == TILE_TREE)
+        return 1;
+
+    return 0;
+}
+
+static int blocked(int x, int y) {
+    /*
+       Kollisionsbox nur bei den Füßen.
+       Dadurch kann die Figur optisch vor Objekten stehen.
+    */
+
+    int left   = x + 3;
+    int right  = x + 12;
+    int top    = y + 18;
+    int bottom = y + 30;
+
+    if (solidTile(left / 8, top / 8))
+        return 1;
+
+    if (solidTile(right / 8, top / 8))
+        return 1;
+
+    if (solidTile(left / 8, bottom / 8))
+        return 1;
+
+    if (solidTile(right / 8, bottom / 8))
+        return 1;
+
+    return 0;
+}
+
+/* ---------------------------------------------------------
+   Spieler-Sprite
+   16x32 Pixel
+   --------------------------------------------------------- */
+
+static void objPixel(u16 *tileBase, int x, int y, u8 color) {
+    /*
+       16x32 Sprite = 2 Tiles breit, 4 Tiles hoch.
+    */
+
+    int tileX = x / 8;
+    int tileY = y / 8;
+
+    int localX = x & 7;
+    int localY = y & 7;
+
+    int tileNumber = tileY * 2 + tileX;
+
+    u16 *tile = &tileBase[tileNumber * 16];
+
+    setTilePixel(tile, localX, localY, color);
+}
+
+static void clearPlayerTiles(u16 *base) {
+    for (int i = 0; i < 8 * 16; i++)
+        base[i] = 0;
+}
+
+static void makePlayerFrame(
+    u16 *base,
+    int direction,
+    int walking
+) {
+    clearPlayerTiles(base);
+
+    /* Farben */
+    const int outline = 1;
+    const int hair    = 2;
+    const int skin    = 3;
+    const int shirt   = 4;
+    const int pants   = 5;
+    const int shoe    = 6;
+
+    /* Kopf */
+    for (int y = 2; y <= 10; y++) {
+        for (int x = 4; x <= 11; x++)
+            objPixel(base, x, y, skin);
+    }
+
+    /* Haare */
+    for (int y = 1; y <= 4; y++) {
+        for (int x = 4; x <= 11; x++)
+            objPixel(base, x, y, hair);
+    }
+
+    objPixel(base, 3, 4, hair);
+    objPixel(base, 12, 4, hair);
+
+    /* Körper */
+    for (int y = 11; y <= 21; y++) {
+        for (int x = 4; x <= 11; x++)
+            objPixel(base, x, y, shirt);
+    }
+
+    /* Arme */
+    for (int y = 12; y <= 20; y++) {
+        objPixel(base, 2, y, skin);
+        objPixel(base, 3, y, skin);
+        objPixel(base, 12, y, skin);
+        objPixel(base, 13, y, skin);
+    }
+
+    /* Richtung sichtbar machen */
+    if (direction == DIR_DOWN) {
+        objPixel(base, 6, 7, outline);
+        objPixel(base, 9, 7, outline);
+    }
+
+    if (direction == DIR_UP) {
+        for (int x = 4; x <= 11; x++)
+            objPixel(base, x, 5, hair);
+    }
+
+    if (direction == DIR_LEFT) {
+        objPixel(base, 5, 7, outline);
+    }
+
+    if (direction == DIR_RIGHT) {
+        objPixel(base, 10, 7, outline);
+    }
+
+    /* Hose */
+    for (int y = 22; y <= 25; y++) {
+        for (int x = 4; x <= 11; x++)
+            objPixel(base, x, y, pants);
+    }
+
+    /* Beine */
+    if (walking) {
+        for (int y = 26; y <= 29; y++) {
+            objPixel(base, 3, y, pants);
+            objPixel(base, 4, y, pants);
+
+            objPixel(base, 10, y, pants);
+            objPixel(base, 11, y, pants);
+        }
+
+        objPixel(base, 2, 30, shoe);
+        objPixel(base, 3, 30, shoe);
+        objPixel(base, 4, 30, shoe);
+
+        objPixel(base, 10, 29, shoe);
+        objPixel(base, 11, 29, shoe);
+        objPixel(base, 12, 29, shoe);
     } else {
-        REG_DISPCNT &= ~BACKBUFFER;
-        showingPage = 0;
-        backBuffer = (volatile u16 *)0x0600A000;
+        for (int y = 26; y <= 29; y++) {
+            objPixel(base, 4, y, pants);
+            objPixel(base, 5, y, pants);
+
+            objPixel(base, 10, y, pants);
+            objPixel(base, 11, y, pants);
+        }
+
+        objPixel(base, 3, 30, shoe);
+        objPixel(base, 4, 30, shoe);
+        objPixel(base, 5, 30, shoe);
+
+        objPixel(base, 10, 30, shoe);
+        objPixel(base, 11, 30, shoe);
+        objPixel(base, 12, 30, shoe);
     }
 }
 
-static void setupPalette(void) {
+/* ---------------------------------------------------------
+   Farben
+   --------------------------------------------------------- */
+
+static void setupPalettes(void) {
+    /* BG Palette */
+
     BG_PALETTE[0]  = RGB5(0, 0, 0);
 
-    /* Landschaft */
     BG_PALETTE[1]  = RGB5(8, 22, 8);
-    BG_PALETTE[2]  = RGB5(10, 25, 10);
+    BG_PALETTE[2]  = RGB5(12, 27, 11);
 
-    /* Bäume */
-    BG_PALETTE[3]  = RGB5(3, 13, 5);
-    BG_PALETTE[4]  = RGB5(5, 20, 7);
-    BG_PALETTE[5]  = RGB5(10, 27, 11);
+    BG_PALETTE[3]  = RGB5(22, 19, 12);
+    BG_PALETTE[4]  = RGB5(28, 25, 18);
 
-    /* Holz */
-    BG_PALETTE[6]  = RGB5(16, 10, 4);
+    BG_PALETTE[5]  = RGB5(5, 14, 25);
+    BG_PALETTE[6]  = RGB5(8, 21, 30);
 
-    /* Wege */
-    BG_PALETTE[7]  = RGB5(22, 19, 12);
-    BG_PALETTE[8]  = RGB5(27, 24, 17);
+    BG_PALETTE[7]  = RGB5(26, 21, 14);
+    BG_PALETTE[8]  = RGB5(20, 15, 9);
 
-    /* Häuser */
-    BG_PALETTE[9]  = RGB5(12, 4, 3);
-    BG_PALETTE[10] = RGB5(26, 7, 5);
+    BG_PALETTE[9]  = RGB5(24, 6, 5);
+    BG_PALETTE[10] = RGB5(30, 11, 8);
+
     BG_PALETTE[11] = RGB5(12, 7, 3);
-    BG_PALETTE[12] = RGB5(27, 21, 13);
+    BG_PALETTE[12] = RGB5(30, 25, 8);
 
-    BG_PALETTE[14] = RGB5(8, 12, 25);
-    BG_PALETTE[15] = RGB5(24, 20, 15);
+    BG_PALETTE[13] = RGB5(4, 17, 5);
+    BG_PALETTE[14] = RGB5(7, 24, 8);
+    BG_PALETTE[15] = RGB5(15, 9, 4);
 
-    BG_PALETTE[16] = RGB5(26, 25, 20);
-    BG_PALETTE[17] = RGB5(10, 24, 29);
-    BG_PALETTE[18] = RGB5(30, 24, 5);
+    /* OBJ Palette */
 
-    /* Spieler */
-    BG_PALETTE[19] = RGB5(4, 4, 6);
-    BG_PALETTE[20] = RGB5(9, 5, 2);
-    BG_PALETTE[21] = RGB5(30, 21, 15);
-    BG_PALETTE[22] = RGB5(4, 12, 27);
-    BG_PALETTE[23] = RGB5(5, 7, 14);
-
-    /* Blumen */
-    BG_PALETTE[24] = RGB5(31, 8, 11);
-    BG_PALETTE[25] = RGB5(31, 28, 6);
-    BG_PALETTE[26] = RGB5(20, 9, 31);
+    OBJ_PALETTE[0] = RGB5(31, 0, 31);
+    OBJ_PALETTE[1] = RGB5(3, 3, 4);
+    OBJ_PALETTE[2] = RGB5(8, 4, 2);
+    OBJ_PALETTE[3] = RGB5(30, 21, 15);
+    OBJ_PALETTE[4] = RGB5(4, 11, 27);
+    OBJ_PALETTE[5] = RGB5(5, 7, 14);
+    OBJ_PALETTE[6] = RGB5(3, 3, 4);
 }
+
+/* ---------------------------------------------------------
+   Hauptprogramm
+   --------------------------------------------------------- */
 
 int main(void) {
     irqInit();
     irqEnable(IRQ_VBLANK);
 
     /*
-     * Mode 4 = 240x160, 256 Farben, zwei Bildseiten.
-     */
-    SetMode(MODE_4 | BG2_ON);
+       Mode 0:
+       BG0 = Tile-Hintergrund
+       OBJ = Hardware-Sprites
+       OBJ_1D_MAP = einfache Sprite-Tile-Anordnung
+    */
+    SetMode(MODE_0 | BG0_ON | OBJ_ON | OBJ_1D_MAP);
 
-    setupPalette();
+    setupPalettes();
+
+    /*
+       BG0:
+       Character Block 0
+       Screen Block 31
+       4bpp
+       32x32 Tilemap
+    */
+    REG_BG0CNT =
+        BG_PRIORITY(1) |
+        CHAR_BASE(0) |
+        SCREEN_BASE(31) |
+        BG_16_COLOR |
+        BG_SIZE_0;
+
+    createBackgroundTiles();
+    createWorld();
+
+    /*
+       Sprite-Daten beginnen bei Tile 0 des OBJ-Speichers.
+    */
+    u16 *playerTiles = (u16 *)SPRITE_GFX;
 
     int px = 112;
-    int py = 118;
+    int py = 112;
 
-    int animation = 0;
-    int animationTimer = 0;
+    int direction = DIR_DOWN;
+    int walking = 0;
+    int walkTimer = 0;
+    int walkFrame = 0;
+
+    makePlayerFrame(playerTiles, direction, 0);
+
+    /*
+       OAM Eintrag 0:
+       16x32 Sprite
+    */
+    OAM[0].attr0 =
+        ATTR0_COLOR_16 |
+        ATTR0_TALL |
+        (py & 0xFF);
+
+    OAM[0].attr1 =
+        ATTR1_SIZE_16 |
+        (px & 0x1FF);
+
+    OAM[0].attr2 =
+        ATTR2_ID(0) |
+        ATTR2_PRIORITY(0);
+
+    /*
+       Restliche Sprites verstecken.
+    */
+    for (int i = 1; i < 128; i++) {
+        OAM[i].attr0 = ATTR0_DISABLED;
+        OAM[i].attr1 = 0;
+        OAM[i].attr2 = 0;
+    }
 
     while (1) {
+        VBlankIntrWait();
         scanKeys();
 
         u16 keys = keysHeld();
 
         int nx = px;
         int ny = py;
-        int moving = 0;
 
+        walking = 0;
+
+        /*
+           Immer nur eine Hauptrichtung gleichzeitig.
+           Dadurch wirkt das Laufen kontrollierter.
+        */
         if (keys & KEY_LEFT) {
-            nx--;
-            moving = 1;
+            nx -= 2;
+            direction = DIR_LEFT;
+            walking = 1;
+        }
+        else if (keys & KEY_RIGHT) {
+            nx += 2;
+            direction = DIR_RIGHT;
+            walking = 1;
+        }
+        else if (keys & KEY_UP) {
+            ny -= 2;
+            direction = DIR_UP;
+            walking = 1;
+        }
+        else if (keys & KEY_DOWN) {
+            ny += 2;
+            direction = DIR_DOWN;
+            walking = 1;
         }
 
-        if (keys & KEY_RIGHT) {
-            nx++;
-            moving = 1;
-        }
-
-        if (keys & KEY_UP) {
-            ny--;
-            moving = 1;
-        }
-
-        if (keys & KEY_DOWN) {
-            ny++;
-            moving = 1;
-        }
-
+        /*
+           X/Y getrennt prüfen.
+        */
         if (!blocked(nx, py))
             px = nx;
 
         if (!blocked(px, ny))
             py = ny;
 
-        if (moving) {
-            animationTimer++;
+        /*
+           Bildschirmgrenzen.
+        */
+        if (px < 0)
+            px = 0;
 
-            if (animationTimer >= 8) {
-                animationTimer = 0;
-                animation = !animation;
+        if (px > 224)
+            px = 224;
+
+        if (py < 0)
+            py = 0;
+
+        if (py > 128)
+            py = 128;
+
+        /*
+           Laufanimation.
+        */
+        if (walking) {
+            walkTimer++;
+
+            if (walkTimer >= 7) {
+                walkTimer = 0;
+                walkFrame ^= 1;
             }
         } else {
-            animation = 0;
-            animationTimer = 0;
+            walkTimer = 0;
+            walkFrame = 0;
         }
 
         /*
-         * Alles wird zuerst auf die unsichtbare Seite gezeichnet.
-         */
-        drawWorld();
-        player(px, py, animation);
+           Nur Sprite-Grafik aktualisieren.
+           Der Hintergrund wird NICHT neu gezeichnet.
+        */
+        makePlayerFrame(
+            playerTiles,
+            direction,
+            walking ? walkFrame : 0
+        );
 
         /*
-         * Erst das komplett fertige Bild anzeigen.
-         */
-        flip();
+           Hardware-Sprite bewegen.
+        */
+        OAM[0].attr0 =
+            ATTR0_COLOR_16 |
+            ATTR0_TALL |
+            (py & 0xFF);
+
+        OAM[0].attr1 =
+            ATTR1_SIZE_16 |
+            (px & 0x1FF);
+
+        OAM[0].attr2 =
+            ATTR2_ID(0) |
+            ATTR2_PRIORITY(0);
     }
 
     return 0;

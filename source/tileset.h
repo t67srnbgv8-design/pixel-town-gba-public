@@ -1,0 +1,54 @@
+#ifndef TILESET_H
+#define TILESET_H
+
+#include <gba.h>
+
+enum
+{
+    TILE_EMPTY = 0,
+
+    TILE_GRASS,
+    TILE_GRASS_DETAIL_A,
+    TILE_GRASS_DETAIL_B,
+
+    TILE_PATH,
+    TILE_PATH_LIGHT,
+    TILE_PATH_EDGE_TOP,
+    TILE_PATH_EDGE_BOTTOM,
+
+    TILE_WALL,
+    TILE_WALL_SHADOW,
+    TILE_WINDOW,
+    TILE_DOOR,
+
+    TILE_ROOF,
+    TILE_ROOF_LIGHT,
+    TILE_ROOF_DARK,
+    TILE_ROOF_EDGE,
+
+    TILE_TREE_LIGHT,
+    TILE_TREE_MID,
+    TILE_TREE_DARK,
+    TILE_TREE_TRUNK,
+
+    TILE_BUSH,
+    TILE_FLOWER,
+
+    TILE_FENCE_H,
+    TILE_FENCE_V,
+    TILE_FENCE_POST,
+
+    TILE_WATER,
+    TILE_WATER_LIGHT,
+    TILE_WATER_EDGE,
+
+    TILE_SOIL,
+    TILE_STONE,
+    TILE_SIGN,
+
+    TILE_COUNT
+};
+
+void tilesetInit(void);
+
+#endif

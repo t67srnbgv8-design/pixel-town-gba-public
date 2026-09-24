@@ -2,23 +2,27 @@
 
 #define MAP_W 64
 #define MAP_H 32
-
 #define WORLD_W (MAP_W * 8)
 #define WORLD_H (MAP_H * 8)
 
 #define SCREEN_W 240
 #define SCREEN_H 160
 
-#define TILE_GRASS      0
-#define TILE_GRASS_DOT  1
-#define TILE_ROAD       2
-#define TILE_WALL       3
-#define TILE_ROOF       4
-#define TILE_DOOR       5
-#define TILE_TREE       6
-#define TILE_FLOWER     7
-#define TILE_WATER      8
-#define TILE_PATH       9
+#define GRASS       0
+#define GRASS2      1
+#define ROAD        2
+#define PATH        3
+#define WALL        4
+#define WALL_DARK   5
+#define ROOF        6
+#define ROOF_EDGE   7
+#define DOOR        8
+#define WINDOW      9
+#define TREE_TOP    10
+#define TREE_BOTTOM 11
+#define FLOWER      12
+#define FENCE       13
+#define WATER       14
 
 #define DIR_DOWN  0
 #define DIR_UP    1
@@ -29,11 +33,11 @@
    TILE HELPERS
    ========================================================= */
 
-static void setTilePixel(u16 *tile, int x, int y, u8 color)
+static void tilePixel(u16 *tile, int x, int y, u8 color)
 {
-    int pixel = y * 8 + x;
-    int word = pixel >> 2;
-    int shift = (pixel & 3) * 4;
+    int p = y * 8 + x;
+    int word = p >> 2;
+    int shift = (p & 3) * 4;
 
     tile[word] &= ~(0xF << shift);
     tile[word] |= (color & 0xF) << shift;
@@ -41,322 +45,431 @@ static void setTilePixel(u16 *tile, int x, int y, u8 color)
 
 static void fillTile(u16 *tile, u8 color)
 {
-    u16 value =
+    u16 v =
         color |
         (color << 4) |
         (color << 8) |
         (color << 12);
 
     for (int i = 0; i < 16; i++)
-        tile[i] = value;
+        tile[i] = v;
 }
 
 /* =========================================================
-   BACKGROUND TILES
+   BACKGROUND GRAPHICS
    ========================================================= */
 
-static void createBackgroundTiles(void)
+static void makeTiles(void)
 {
-    u16 *tiles = (u16 *)CHAR_BASE_ADR(0);
+    u16 *t = (u16 *)CHAR_BASE_ADR(0);
 
-    /* Gras */
-    fillTile(&tiles[TILE_GRASS * 16], 1);
+    /* Grass */
+    fillTile(&t[GRASS * 16], 1);
 
-    /* Gras mit Details */
-    fillTile(&tiles[TILE_GRASS_DOT * 16], 1);
-    setTilePixel(&tiles[TILE_GRASS_DOT * 16], 2, 2, 2);
-    setTilePixel(&tiles[TILE_GRASS_DOT * 16], 6, 5, 2);
+    fillTile(&t[GRASS2 * 16], 1);
+    tilePixel(&t[GRASS2 * 16], 1, 2, 2);
+    tilePixel(&t[GRASS2 * 16], 6, 5, 2);
 
-    /* Straße */
-    fillTile(&tiles[TILE_ROAD * 16], 3);
+    /* Road */
+    fillTile(&t[ROAD * 16], 3);
 
-    for (int x = 0; x < 8; x += 4)
-        setTilePixel(&tiles[TILE_ROAD * 16], x, 4, 4);
+    tilePixel(&t[ROAD * 16], 1, 1, 4);
+    tilePixel(&t[ROAD * 16], 6, 5, 4);
 
-    /* Hauswand */
-    fillTile(&tiles[TILE_WALL * 16], 5);
+    /* Footpath */
+    fillTile(&t[PATH * 16], 5);
+
+    /* Wall */
+    fillTile(&t[WALL * 16], 6);
 
     for (int x = 0; x < 8; x++)
-        setTilePixel(&tiles[TILE_WALL * 16], x, 7, 6);
+        tilePixel(&t[WALL * 16], x, 7, 7);
 
-    /* Dach */
-    fillTile(&tiles[TILE_ROOF * 16], 7);
+    /* Dark wall */
+    fillTile(&t[WALL_DARK * 16], 7);
 
-    for (int x = 0; x < 8; x += 2)
-        setTilePixel(&tiles[TILE_ROOF * 16], x, 2, 8);
+    /* Roof */
+    fillTile(&t[ROOF * 16], 8);
 
-    /* Tür */
-    fillTile(&tiles[TILE_DOOR * 16], 9);
-    setTilePixel(&tiles[TILE_DOOR * 16], 6, 4, 10);
-
-    /* Baum */
-    fillTile(&tiles[TILE_TREE * 16], 1);
-
-    for (int y = 0; y < 6; y++)
+    for (int y = 1; y < 8; y += 3)
     {
-        for (int x = 1; x < 7; x++)
+        for (int x = 0; x < 8; x++)
+            tilePixel(&t[ROOF * 16], x, y, 9);
+    }
+
+    /* Roof edge */
+    fillTile(&t[ROOF_EDGE * 16], 8);
+
+    for (int x = 0; x < 8; x++)
+    {
+        tilePixel(&t[ROOF_EDGE * 16], x, 6, 9);
+        tilePixel(&t[ROOF_EDGE * 16], x, 7, 9);
+    }
+
+    /* Door */
+    fillTile(&t[DOOR * 16], 10);
+
+    for (int y = 1; y < 8; y++)
+    {
+        tilePixel(&t[DOOR * 16], 1, y, 7);
+        tilePixel(&t[DOOR * 16], 6, y, 7);
+    }
+
+    tilePixel(&t[DOOR * 16], 5, 4, 15);
+
+    /* Window */
+    fillTile(&t[WINDOW * 16], 6);
+
+    for (int y = 1; y <= 6; y++)
+    {
+        for (int x = 1; x <= 6; x++)
+            tilePixel(&t[WINDOW * 16], x, y, 11);
+    }
+
+    for (int x = 1; x <= 6; x++)
+        tilePixel(&t[WINDOW * 16], x, 4, 12);
+
+    tilePixel(&t[WINDOW * 16], 4, 2, 12);
+    tilePixel(&t[WINDOW * 16], 4, 3, 12);
+    tilePixel(&t[WINDOW * 16], 4, 4, 12);
+    tilePixel(&t[WINDOW * 16], 4, 5, 12);
+    tilePixel(&t[WINDOW * 16], 4, 6, 12);
+
+    /* Tree crown */
+    fillTile(&t[TREE_TOP * 16], 1);
+
+    for (int y = 0; y < 8; y++)
+    {
+        for (int x = 0; x < 8; x++)
         {
-            setTilePixel(
-                &tiles[TILE_TREE * 16],
-                x,
-                y,
-                ((x + y) & 1) ? 11 : 12
-            );
+            int dx = x - 3;
+            int dy = y - 4;
+
+            if (dx * dx + dy * dy < 18)
+            {
+                tilePixel(
+                    &t[TREE_TOP * 16],
+                    x,
+                    y,
+                    ((x + y) & 1) ? 13 : 14
+                );
+            }
         }
     }
 
-    setTilePixel(&tiles[TILE_TREE * 16], 3, 6, 13);
-    setTilePixel(&tiles[TILE_TREE * 16], 4, 6, 13);
-    setTilePixel(&tiles[TILE_TREE * 16], 3, 7, 13);
-    setTilePixel(&tiles[TILE_TREE * 16], 4, 7, 13);
+    /* Tree trunk/lower crown */
+    fillTile(&t[TREE_BOTTOM * 16], 1);
 
-    /* Blumen */
-    fillTile(&tiles[TILE_FLOWER * 16], 1);
+    for (int y = 0; y < 4; y++)
+    {
+        for (int x = 1; x < 7; x++)
+            tilePixel(&t[TREE_BOTTOM * 16], x, y, 13);
+    }
 
-    setTilePixel(&tiles[TILE_FLOWER * 16], 2, 3, 14);
-    setTilePixel(&tiles[TILE_FLOWER * 16], 3, 3, 15);
+    for (int y = 4; y < 8; y++)
+    {
+        tilePixel(&t[TREE_BOTTOM * 16], 3, y, 10);
+        tilePixel(&t[TREE_BOTTOM * 16], 4, y, 10);
+    }
 
-    /* Wasser */
-    fillTile(&tiles[TILE_WATER * 16], 10);
+    /* Flowers */
+    fillTile(&t[FLOWER * 16], 1);
+    tilePixel(&t[FLOWER * 16], 2, 3, 15);
+    tilePixel(&t[FLOWER * 16], 3, 3, 12);
+    tilePixel(&t[FLOWER * 16], 6, 6, 15);
+
+    /* Fence */
+    fillTile(&t[FENCE * 16], 1);
+
+    for (int x = 0; x < 8; x++)
+    {
+        tilePixel(&t[FENCE * 16], x, 3, 10);
+        tilePixel(&t[FENCE * 16], x, 5, 10);
+    }
+
+    tilePixel(&t[FENCE * 16], 1, 2, 10);
+    tilePixel(&t[FENCE * 16], 1, 6, 10);
+    tilePixel(&t[FENCE * 16], 6, 2, 10);
+    tilePixel(&t[FENCE * 16], 6, 6, 10);
+
+    /* Water */
+    fillTile(&t[WATER * 16], 11);
 
     for (int x = 0; x < 8; x += 3)
-        setTilePixel(&tiles[TILE_WATER * 16], x, 3, 15);
-
-    /* kleiner Weg */
-    fillTile(&tiles[TILE_PATH * 16], 4);
+        tilePixel(&t[WATER * 16], x, 4, 12);
 }
 
 /* =========================================================
-   64x32 MAP
-
-   BG_SIZE_1 = 64x32 Tiles.
-   Dafür werden zwei Screenblocks benutzt:
-   Block 30 = linke Hälfte
-   Block 31 = rechte Hälfte.
+   MAP
    ========================================================= */
 
-static void setMapTile(int x, int y, int tile)
+static void setMap(int x, int y, int tile)
 {
     if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H)
         return;
 
-    u16 *map;
-
     if (x < 32)
     {
-        map = (u16 *)SCREEN_BASE_BLOCK(30);
+        u16 *map = (u16 *)SCREEN_BASE_BLOCK(30);
         map[y * 32 + x] = tile;
     }
     else
     {
-        map = (u16 *)SCREEN_BASE_BLOCK(31);
+        u16 *map = (u16 *)SCREEN_BASE_BLOCK(31);
         map[y * 32 + (x - 32)] = tile;
     }
 }
 
-static int getMapTile(int x, int y)
+static int getMap(int x, int y)
 {
     if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H)
-        return TILE_WALL;
-
-    u16 *map;
+        return WALL;
 
     if (x < 32)
     {
-        map = (u16 *)SCREEN_BASE_BLOCK(30);
+        u16 *map = (u16 *)SCREEN_BASE_BLOCK(30);
         return map[y * 32 + x] & 0x3FF;
     }
 
-    map = (u16 *)SCREEN_BASE_BLOCK(31);
-
+    u16 *map = (u16 *)SCREEN_BASE_BLOCK(31);
     return map[y * 32 + (x - 32)] & 0x3FF;
 }
 
 /* =========================================================
-   WORLD BUILDING
+   BIGGER HOUSES
    ========================================================= */
 
-static void house(int x, int y)
+static void makeHouse(int x, int y, int width)
 {
-    for (int xx = x; xx < x + 6; xx++)
+    /*
+       Häuser sind jetzt ungefähr
+       80-104 Pixel breit.
+    */
+
+    int right = x + width - 1;
+
+    /* Dach - 4 Tiles hoch */
+    for (int yy = y; yy < y + 3; yy++)
     {
-        setMapTile(xx, y, TILE_ROOF);
-        setMapTile(xx, y + 1, TILE_ROOF);
+        for (int xx = x + 1; xx < right; xx++)
+            setMap(xx, yy, ROOF);
     }
 
-    for (int yy = y + 2; yy < y + 6; yy++)
+    /* leichte Dachüberstände */
+    for (int xx = x; xx <= right; xx++)
+        setMap(xx, y + 3, ROOF_EDGE);
+
+    /* Hausfassade - 5 Tiles hoch */
+    for (int yy = y + 4; yy <= y + 8; yy++)
     {
-        for (int xx = x; xx < x + 6; xx++)
-            setMapTile(xx, yy, TILE_WALL);
+        for (int xx = x + 1; xx < right; xx++)
+            setMap(xx, yy, WALL);
     }
 
-    setMapTile(x + 2, y + 5, TILE_DOOR);
+    /* dunkle Seiten */
+    for (int yy = y + 4; yy <= y + 8; yy++)
+    {
+        setMap(x, yy, WALL_DARK);
+        setMap(right, yy, WALL_DARK);
+    }
+
+    /* Fenster */
+    setMap(x + 2, y + 5, WINDOW);
+    setMap(x + 3, y + 5, WINDOW);
+
+    setMap(right - 3, y + 5, WINDOW);
+    setMap(right - 2, y + 5, WINDOW);
+
+    /* Tür 2 Tiles breit */
+    int doorX = x + width / 2 - 1;
+
+    setMap(doorX, y + 7, DOOR);
+    setMap(doorX + 1, y + 7, DOOR);
+
+    setMap(doorX, y + 8, DOOR);
+    setMap(doorX + 1, y + 8, DOOR);
 }
 
-static void createWorld(void)
-{
-    /* komplette Welt = Gras */
+/* =========================================================
+   BIG TREES
+   ========================================================= */
 
+static void makeTree(int x, int y)
+{
+    /*
+       16 x 24 Pixel großer Baum.
+    */
+
+    setMap(x, y, TREE_TOP);
+    setMap(x + 1, y, TREE_TOP);
+
+    setMap(x, y + 1, TREE_TOP);
+    setMap(x + 1, y + 1, TREE_TOP);
+
+    setMap(x, y + 2, TREE_BOTTOM);
+    setMap(x + 1, y + 2, TREE_BOTTOM);
+}
+
+/* =========================================================
+   WORLD
+   ========================================================= */
+
+static void makeWorld(void)
+{
+    /* Grass */
     for (int y = 0; y < MAP_H; y++)
     {
         for (int x = 0; x < MAP_W; x++)
         {
-            if ((x * 3 + y * 7) % 17 == 0)
-                setMapTile(x, y, TILE_GRASS_DOT);
+            if ((x * 7 + y * 5) % 23 == 0)
+                setMap(x, y, GRASS2);
             else
-                setMapTile(x, y, TILE_GRASS);
+                setMap(x, y, GRASS);
         }
     }
 
-    /* große Ost-West-Straße */
+    /*
+       Straßen jetzt schmaler:
+       3 Tiles = 24 Pixel.
+    */
 
-    for (int y = 13; y <= 17; y++)
+    for (int y = 14; y <= 16; y++)
     {
         for (int x = 0; x < MAP_W; x++)
-            setMapTile(x, y, TILE_ROAD);
+            setMap(x, y, ROAD);
     }
 
-    /* Nord-Süd-Straße */
-
-    for (int x = 28; x <= 32; x++)
+    for (int x = 30; x <= 32; x++)
     {
         for (int y = 0; y < MAP_H; y++)
-            setMapTile(x, y, TILE_ROAD);
+            setMap(x, y, ROAD);
     }
 
-    /* Nebenstraße */
+    /*
+       Große Häuser.
+    */
 
-    for (int x = 44; x <= 47; x++)
+    makeHouse(2, 3, 11);
+    makeHouse(16, 3, 11);
+
+    makeHouse(35, 3, 12);
+    makeHouse(50, 3, 12);
+
+    makeHouse(4, 20, 12);
+    makeHouse(19, 20, 10);
+
+    makeHouse(35, 20, 11);
+    makeHouse(49, 20, 12);
+
+    /*
+       Wege zu Haustüren.
+    */
+
+    for (int y = 12; y <= 13; y++)
     {
-        for (int y = 12; y < MAP_H; y++)
-            setMapTile(x, y, TILE_PATH);
+        setMap(6, y, PATH);
+        setMap(7, y, PATH);
+
+        setMap(20, y, PATH);
+        setMap(21, y, PATH);
+
+        setMap(40, y, PATH);
+        setMap(41, y, PATH);
+
+        setMap(55, y, PATH);
+        setMap(56, y, PATH);
     }
 
-    /* Häuser */
+    /*
+       Größere Bäume.
+    */
 
-    house(5, 4);
-    house(15, 4);
-    house(36, 4);
-    house(49, 4);
+    makeTree(1, 17);
+    makeTree(14, 18);
+    makeTree(27, 18);
 
-    house(8, 21);
-    house(20, 22);
-    house(36, 21);
-    house(51, 21);
+    makeTree(34, 17);
+    makeTree(46, 18);
+    makeTree(61, 17);
 
-    /* Park links unten */
+    /*
+       Blumen.
+    */
 
-    for (int x = 2; x < 7; x++)
-    {
-        setMapTile(x, 22, TILE_TREE);
-        setMapTile(x, 28, TILE_TREE);
-    }
+    for (int x = 14; x <= 18; x++)
+        setMap(x, 18, FLOWER);
 
-    setMapTile(2, 24, TILE_TREE);
-    setMapTile(2, 26, TILE_TREE);
+    for (int x = 42; x <= 46; x++)
+        setMap(x, 18, FLOWER);
 
-    setMapTile(6, 24, TILE_TREE);
-    setMapTile(6, 26, TILE_TREE);
+    /*
+       Zäune.
+    */
 
-    for (int x = 3; x <= 5; x++)
-    {
-        setMapTile(x, 24, TILE_FLOWER);
-        setMapTile(x, 26, TILE_FLOWER);
-    }
+    for (int x = 1; x <= 12; x++)
+        setMap(x, 30, FENCE);
 
-    /* kleiner See rechts */
-
-    for (int y = 21; y <= 27; y++)
-    {
-        for (int x = 58; x <= 62; x++)
-            setMapTile(x, y, TILE_WATER);
-    }
-
-    /* Bäume am oberen Rand */
-
-    for (int x = 1; x < MAP_W - 1; x += 4)
-        setMapTile(x, 1, TILE_TREE);
-
-    /* einzelne Bäume */
-
-    setMapTile(12, 9, TILE_TREE);
-    setMapTile(24, 8, TILE_TREE);
-    setMapTile(40, 9, TILE_TREE);
-    setMapTile(56, 9, TILE_TREE);
-
-    setMapTile(13, 19, TILE_TREE);
-    setMapTile(33, 20, TILE_TREE);
-    setMapTile(42, 25, TILE_TREE);
+    for (int x = 35; x <= 46; x++)
+        setMap(x, 30, FENCE);
 }
 
 /* =========================================================
    COLLISION
    ========================================================= */
 
-static int solidTile(int tx, int ty)
+static int solid(int tx, int ty)
 {
-    int tile = getMapTile(tx, ty);
+    int tile = getMap(tx, ty);
 
-    if (tile == TILE_WALL)
-        return 1;
-
-    if (tile == TILE_ROOF)
-        return 1;
-
-    if (tile == TILE_TREE)
-        return 1;
-
-    if (tile == TILE_WATER)
+    if (tile == WALL ||
+        tile == WALL_DARK ||
+        tile == ROOF ||
+        tile == ROOF_EDGE ||
+        tile == TREE_TOP ||
+        tile == TREE_BOTTOM ||
+        tile == FENCE ||
+        tile == WATER)
         return 1;
 
     return 0;
 }
 
-static int blocked(int worldX, int worldY)
+static int blocked(int x, int y)
 {
     /*
-       Spielerposition bezeichnet oben links
-       vom 32x32 Sprite.
-
-       Die sichtbare Figur sitzt ungefähr
-       in der Mitte.
-
-       Nur Füße kollidieren.
+       Spieler ist 16x24 sichtbar.
+       Füße sind unten.
     */
 
-    int left   = worldX + 11;
-    int right  = worldX + 20;
+    int left = x + 4;
+    int right = x + 11;
 
-    int top    = worldY + 25;
-    int bottom = worldY + 29;
+    int top = y + 19;
+    int bottom = y + 23;
 
-    if (solidTile(left / 8, top / 8))
+    if (solid(left / 8, top / 8))
         return 1;
 
-    if (solidTile(right / 8, top / 8))
+    if (solid(right / 8, top / 8))
         return 1;
 
-    if (solidTile(left / 8, bottom / 8))
+    if (solid(left / 8, bottom / 8))
         return 1;
 
-    if (solidTile(right / 8, bottom / 8))
+    if (solid(right / 8, bottom / 8))
         return 1;
 
     return 0;
 }
 
 /* =========================================================
-   PLAYER SPRITE
+   PLAYER - 16x32 HARDWARE SPRITE
+   sichtbare Figur etwa 16x24
    ========================================================= */
 
-static void objPixel(
-    u16 *base,
-    int x,
-    int y,
-    u8 color
-)
+static void objPixel(u16 *base, int x, int y, u8 color)
 {
-    if (x < 0 || x >= 32 || y < 0 || y >= 32)
+    if (x < 0 || x >= 16 || y < 0 || y >= 32)
         return;
 
     int tileX = x >> 3;
@@ -365,10 +478,9 @@ static void objPixel(
     int localX = x & 7;
     int localY = y & 7;
 
-    int tileNumber =
-        tileY * 4 + tileX;
+    int tileNumber = tileY * 2 + tileX;
 
-    setTilePixel(
+    tilePixel(
         &base[tileNumber * 16],
         localX,
         localY,
@@ -378,11 +490,14 @@ static void objPixel(
 
 static void clearPlayer(u16 *base)
 {
-    for (int i = 0; i < 256; i++)
+    /*
+       16x32 = 8 Tiles.
+    */
+    for (int i = 0; i < 128; i++)
         base[i] = 0;
 }
 
-static void makePlayerFrame(
+static void drawPlayer(
     u16 *base,
     int direction,
     int frame
@@ -390,203 +505,178 @@ static void makePlayerFrame(
 {
     clearPlayer(base);
 
-    const int outline = 1;
-    const int hair    = 2;
-    const int skin    = 3;
-    const int shirt   = 4;
-    const int pants   = 5;
-    const int shoes   = 6;
-    const int light   = 7;
-    const int shadow  = 8;
+    int outline = 1;
+    int hair = 2;
+    int skin = 3;
+    int shirt = 4;
+    int pants = 5;
+    int shoe = 6;
+    int highlight = 7;
+    int shadow = 8;
+
+    /*
+       Sprite ist 32 hoch,
+       Figur beginnt erst bei y=5.
+    */
 
     /* Schatten */
+    for (int x = 4; x <= 11; x++)
+        objPixel(base, x, 29, shadow);
 
-    for (int x = 11; x <= 20; x++)
-        objPixel(base, x, 30, shadow);
-
-    /* Kopf */
-
-    for (int y = 4; y <= 11; y++)
+    /* Haare / Kopf */
+    for (int y = 6; y <= 11; y++)
     {
-        for (int x = 12; x <= 19; x++)
+        for (int x = 5; x <= 10; x++)
             objPixel(base, x, y, skin);
     }
 
-    /* Haare */
+    for (int x = 5; x <= 10; x++)
+        objPixel(base, x, 5, hair);
 
-    for (int x = 12; x <= 19; x++)
-    {
-        objPixel(base, x, 3, hair);
-        objPixel(base, x, 4, hair);
-    }
-
-    objPixel(base, 11, 5, hair);
-    objPixel(base, 20, 5, hair);
-
-    /* Gesicht */
+    objPixel(base, 4, 7, hair);
+    objPixel(base, 11, 7, hair);
 
     if (direction == DIR_DOWN)
     {
-        objPixel(base, 14, 8, outline);
-        objPixel(base, 18, 8, outline);
+        objPixel(base, 6, 9, outline);
+        objPixel(base, 9, 9, outline);
     }
     else if (direction == DIR_UP)
     {
-        for (int x = 12; x <= 19; x++)
-            objPixel(base, x, 7, hair);
+        for (int x = 5; x <= 10; x++)
+            objPixel(base, x, 8, hair);
     }
     else if (direction == DIR_LEFT)
     {
-        objPixel(base, 13, 8, outline);
+        objPixel(base, 5, 9, outline);
     }
     else
     {
-        objPixel(base, 18, 8, outline);
+        objPixel(base, 10, 9, outline);
     }
 
-    /* Hals */
-
-    objPixel(base, 15, 12, skin);
-    objPixel(base, 16, 12, skin);
-
-    /* Oberkörper */
-
-    for (int y = 13; y <= 21; y++)
+    /* Körper */
+    for (int y = 13; y <= 19; y++)
     {
-        for (int x = 12; x <= 19; x++)
+        for (int x = 5; x <= 10; x++)
             objPixel(base, x, y, shirt);
     }
 
-    objPixel(base, 13, 15, light);
-    objPixel(base, 13, 16, light);
-    objPixel(base, 13, 17, light);
+    objPixel(base, 6, 14, highlight);
+    objPixel(base, 6, 15, highlight);
 
     /* Arme */
+    int swingA = frame ? 1 : 0;
+    int swingB = frame ? 0 : 1;
 
-    int armA = frame ? 1 : 0;
-    int armB = frame ? 0 : 1;
-
-    for (int y = 14; y <= 20; y++)
+    for (int y = 14; y <= 19; y++)
     {
-        objPixel(base, 10, y + armA, skin);
-        objPixel(base, 11, y + armA, skin);
+        objPixel(base, 3, y + swingA, skin);
+        objPixel(base, 4, y + swingA, skin);
 
-        objPixel(base, 20, y + armB, skin);
-        objPixel(base, 21, y + armB, skin);
+        objPixel(base, 11, y + swingB, skin);
+        objPixel(base, 12, y + swingB, skin);
     }
 
     /* Hose */
-
-    for (int y = 22; y <= 24; y++)
+    for (int y = 20; y <= 22; y++)
     {
-        for (int x = 12; x <= 19; x++)
+        for (int x = 5; x <= 10; x++)
             objPixel(base, x, y, pants);
     }
 
     /* Beine */
-
     if (frame == 0)
     {
-        for (int y = 25; y <= 28; y++)
+        for (int y = 23; y <= 27; y++)
         {
-            objPixel(base, 12, y, pants);
-            objPixel(base, 13, y, pants);
-            objPixel(base, 14, y, pants);
+            objPixel(base, 5, y, pants);
+            objPixel(base, 6, y, pants);
 
-            objPixel(base, 17, y, pants);
-            objPixel(base, 18, y, pants);
-            objPixel(base, 19, y, pants);
+            objPixel(base, 9, y, pants);
+            objPixel(base, 10, y, pants);
         }
 
-        objPixel(base, 11, 29, shoes);
-        objPixel(base, 12, 29, shoes);
-        objPixel(base, 13, 29, shoes);
-        objPixel(base, 14, 29, shoes);
+        objPixel(base, 4, 28, shoe);
+        objPixel(base, 5, 28, shoe);
+        objPixel(base, 6, 28, shoe);
 
-        objPixel(base, 17, 29, shoes);
-        objPixel(base, 18, 29, shoes);
-        objPixel(base, 19, 29, shoes);
-        objPixel(base, 20, 29, shoes);
+        objPixel(base, 9, 28, shoe);
+        objPixel(base, 10, 28, shoe);
+        objPixel(base, 11, 28, shoe);
     }
     else
     {
-        for (int y = 25; y <= 28; y++)
+        for (int y = 23; y <= 27; y++)
         {
-            objPixel(base, 11, y, pants);
-            objPixel(base, 12, y, pants);
-            objPixel(base, 13, y, pants);
+            objPixel(base, 4, y, pants);
+            objPixel(base, 5, y, pants);
 
-            objPixel(base, 18, y, pants);
-            objPixel(base, 19, y, pants);
-            objPixel(base, 20, y, pants);
+            objPixel(base, 10, y, pants);
+            objPixel(base, 11, y, pants);
         }
 
-        objPixel(base, 10, 29, shoes);
-        objPixel(base, 11, 29, shoes);
-        objPixel(base, 12, 29, shoes);
-        objPixel(base, 13, 29, shoes);
+        objPixel(base, 3, 28, shoe);
+        objPixel(base, 4, 28, shoe);
+        objPixel(base, 5, 28, shoe);
 
-        objPixel(base, 18, 29, shoes);
-        objPixel(base, 19, 29, shoes);
-        objPixel(base, 20, 29, shoes);
-        objPixel(base, 21, 29, shoes);
+        objPixel(base, 10, 28, shoe);
+        objPixel(base, 11, 28, shoe);
+        objPixel(base, 12, 28, shoe);
     }
 }
 
 /* =========================================================
-   PALETTES
+   PALETTE
    ========================================================= */
 
-static void setupPalettes(void)
+static void palettes(void)
 {
-    BG_PALETTE[0]  = RGB5(0, 0, 0);
+    BG_PALETTE[0] = RGB5(0,0,0);
 
-    BG_PALETTE[1]  = RGB5(8, 22, 8);
-    BG_PALETTE[2]  = RGB5(12, 27, 11);
+    BG_PALETTE[1] = RGB5(8,22,8);
+    BG_PALETTE[2] = RGB5(12,27,11);
 
-    BG_PALETTE[3]  = RGB5(22, 19, 12);
-    BG_PALETTE[4]  = RGB5(27, 23, 16);
+    BG_PALETTE[3] = RGB5(21,18,12);
+    BG_PALETTE[4] = RGB5(26,23,16);
+    BG_PALETTE[5] = RGB5(23,20,14);
 
-    BG_PALETTE[5]  = RGB5(26, 21, 14);
-    BG_PALETTE[6]  = RGB5(20, 15, 9);
+    BG_PALETTE[6] = RGB5(26,21,14);
+    BG_PALETTE[7] = RGB5(18,13,8);
 
-    BG_PALETTE[7]  = RGB5(24, 6, 5);
-    BG_PALETTE[8]  = RGB5(30, 11, 8);
+    BG_PALETTE[8] = RGB5(23,5,5);
+    BG_PALETTE[9] = RGB5(29,9,7);
 
-    BG_PALETTE[9]  = RGB5(12, 7, 3);
-    BG_PALETTE[10] = RGB5(5, 15, 26);
+    BG_PALETTE[10] = RGB5(12,7,3);
 
-    BG_PALETTE[11] = RGB5(4, 17, 5);
-    BG_PALETTE[12] = RGB5(7, 24, 8);
+    BG_PALETTE[11] = RGB5(8,19,29);
+    BG_PALETTE[12] = RGB5(19,27,31);
 
-    BG_PALETTE[13] = RGB5(15, 9, 4);
-    BG_PALETTE[14] = RGB5(31, 8, 11);
-    BG_PALETTE[15] = RGB5(12, 23, 31);
+    BG_PALETTE[13] = RGB5(3,16,5);
+    BG_PALETTE[14] = RGB5(7,25,8);
 
-    SPRITE_PALETTE[0] = RGB5(31, 0, 31);
-    SPRITE_PALETTE[1] = RGB5(3, 3, 4);
-    SPRITE_PALETTE[2] = RGB5(8, 4, 2);
-    SPRITE_PALETTE[3] = RGB5(30, 21, 15);
-    SPRITE_PALETTE[4] = RGB5(4, 11, 27);
-    SPRITE_PALETTE[5] = RGB5(5, 7, 14);
-    SPRITE_PALETTE[6] = RGB5(3, 3, 4);
-    SPRITE_PALETTE[7] = RGB5(20, 22, 31);
-    SPRITE_PALETTE[8] = RGB5(4, 12, 4);
+    BG_PALETTE[15] = RGB5(31,27,8);
+
+    SPRITE_PALETTE[0] = RGB5(31,0,31);
+    SPRITE_PALETTE[1] = RGB5(3,3,4);
+    SPRITE_PALETTE[2] = RGB5(8,4,2);
+    SPRITE_PALETTE[3] = RGB5(30,21,15);
+    SPRITE_PALETTE[4] = RGB5(4,11,27);
+    SPRITE_PALETTE[5] = RGB5(5,7,14);
+    SPRITE_PALETTE[6] = RGB5(3,3,4);
+    SPRITE_PALETTE[7] = RGB5(20,22,31);
+    SPRITE_PALETTE[8] = RGB5(4,12,4);
 }
 
-/* =========================================================
-   CAMERA
-   ========================================================= */
-
-static int clampInt(int value, int min, int max)
+static int clampInt(int v, int min, int max)
 {
-    if (value < min)
+    if (v < min)
         return min;
 
-    if (value > max)
+    if (v > max)
         return max;
 
-    return value;
+    return v;
 }
 
 /* =========================================================
@@ -605,12 +695,7 @@ int main(void)
         OBJ_1D_MAP
     );
 
-    setupPalettes();
-
-    /*
-       BG_SIZE_1 = 512x256 Pixel / 64x32 Tiles.
-       Screenblock 30 + 31.
-    */
+    palettes();
 
     REG_BG0CNT =
         BG_PRIORITY(1) |
@@ -619,33 +704,44 @@ int main(void)
         BG_16_COLOR |
         BG_SIZE_1;
 
-    createBackgroundTiles();
-    createWorld();
+    makeTiles();
+    makeWorld();
 
-    u16 *playerTiles =
-        (u16 *)SPRITE_GFX;
+    u16 *playerTiles = (u16 *)SPRITE_GFX;
 
     /*
-       Spieler-WELTPOSITION.
-       Nicht Bildschirmposition.
+       Start mitten auf der Straße.
     */
 
-    int playerX = 240;
-    int playerY = 104;
+    int playerX = 244;
+    int playerY = 100;
 
     int direction = DIR_DOWN;
-
     int moving = 0;
+
     int walkFrame = 0;
     int walkTimer = 0;
 
-    makePlayerFrame(
+    drawPlayer(
         playerTiles,
         direction,
         0
     );
 
-    /* Andere Sprites deaktivieren */
+    /*
+       16x32 Sprite:
+       tall + size 32.
+    */
+
+    OAM[0].attr0 =
+        ATTR0_COLOR_16 |
+        ATTR0_TALL;
+
+    OAM[0].attr1 =
+        ATTR1_SIZE_32;
+
+    OAM[0].attr2 =
+        ATTR2_PRIORITY(0);
 
     for (int i = 1; i < 128; i++)
     {
@@ -665,10 +761,6 @@ int main(void)
         int ny = playerY;
 
         moving = 0;
-
-        /*
-           1 Pixel / Frame
-        */
 
         if (keys & KEY_LEFT)
         {
@@ -695,35 +787,14 @@ int main(void)
             moving = 1;
         }
 
-        /*
-           Weltgrenzen zuerst.
-        */
-
-        nx = clampInt(
-            nx,
-            -8,
-            WORLD_W - 24
-        );
-
-        ny = clampInt(
-            ny,
-            -4,
-            WORLD_H - 32
-        );
-
-        /*
-           Kollision
-        */
+        nx = clampInt(nx, 0, WORLD_W - 16);
+        ny = clampInt(ny, 0, WORLD_H - 32);
 
         if (!blocked(nx, playerY))
             playerX = nx;
 
         if (!blocked(playerX, ny))
             playerY = ny;
-
-        /*
-           Animation
-        */
 
         if (moving)
         {
@@ -741,20 +812,18 @@ int main(void)
             walkFrame = 0;
         }
 
-        makePlayerFrame(
+        drawPlayer(
             playerTiles,
             direction,
             moving ? walkFrame : 0
         );
 
         /*
-           Kamera folgt der Figur.
-
-           Spieler ungefähr in Bildschirmmitte.
+           Kamera
         */
 
         int cameraX =
-            playerX + 16 - SCREEN_W / 2;
+            playerX + 8 - SCREEN_W / 2;
 
         int cameraY =
             playerY + 16 - SCREEN_H / 2;
@@ -771,30 +840,15 @@ int main(void)
             WORLD_H - SCREEN_H
         );
 
-        /*
-           Hardware-Scrolling.
-        */
-
         REG_BG0HOFS = cameraX;
         REG_BG0VOFS = cameraY;
 
-        /*
-           Weltposition -> Bildschirmposition.
-        */
-
-        int screenX =
-            playerX - cameraX;
-
-        int screenY =
-            playerY - cameraY;
-
-        /*
-           Hardware-Sprite aktualisieren.
-        */
+        int screenX = playerX - cameraX;
+        int screenY = playerY - cameraY;
 
         OAM[0].attr0 =
             ATTR0_COLOR_16 |
-            ATTR0_SQUARE |
+            ATTR0_TALL |
             (screenY & 0xFF);
 
         OAM[0].attr1 =

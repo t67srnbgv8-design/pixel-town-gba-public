@@ -11,7 +11,6 @@ BUILD   := build
 SOURCES := source
 INCLUDES :=
 LIBS    := -lgba
-LIBDIRS := $(LIBGBA)
 
 ARCH := -mthumb -mthumb-interwork
 
@@ -29,8 +28,9 @@ export DEPSDIR := $(CURDIR)/$(BUILD)
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 
 export OFILES := $(CFILES:.c=.o)
-export INCLUDE := $(foreach dir,$(INCLUDES),-iquote $(CURDIR)/$(dir)) -I$(LIBGBA)/include
-export LIBPATHS := -L$(LIBGBA)/lib
+
+export INCLUDE := -I$(DEVKITPRO)/libgba/include
+export LIBPATHS := -L$(DEVKITPRO)/libgba/lib
 
 export CC := $(DEVKITARM)/bin/arm-none-eabi-gcc
 export CXX := $(DEVKITARM)/bin/arm-none-eabi-g++

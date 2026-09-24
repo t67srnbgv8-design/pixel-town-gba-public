@@ -14,7 +14,7 @@ LIBS    := -lgba
 
 ARCH := -mthumb -mthumb-interwork
 
-CFLAGS   := -g -Wall -O2 -mcpu=arm7tdmi -mtune=arm7tdmi $(ARCH)
+CFLAGS   := -g -Wall -O2 -mcpu=arm7tdmi -mtune=arm7tdmi $(ARCH) -I$(DEVKITPRO)/libgba/include
 CXXFLAGS := $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS  := -g $(ARCH)
 LDFLAGS  := -g $(ARCH) -Wl,-Map,$(notdir $*.map)
@@ -26,7 +26,6 @@ export VPATH := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir))
 export DEPSDIR := $(CURDIR)/$(BUILD)
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-
 export OFILES := $(CFILES:.c=.o)
 
 export INCLUDE := -I$(DEVKITPRO)/libgba/include

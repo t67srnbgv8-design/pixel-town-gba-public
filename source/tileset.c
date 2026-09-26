@@ -5,43 +5,69 @@ static u16 *gfx;
 
 static void clearTile(int tile)
 {
-    for (int i=0; i<16; i++)
-        gfx[tile*16+i] = 0;
+    int i;
+
+    for (i = 0; i < 16; i++)
+        gfx[tile * 16 + i] = 0;
 }
 
-static void px(int tile,int x,int y,int c)
+static void px(
+    int tile,
+    int x,
+    int y,
+    int color
+)
 {
-    if (x<0 || x>7 || y<0 || y>7)
+    int p;
+    int word;
+    int shift;
+
+    if (x < 0 || x > 7 || y < 0 || y > 7)
         return;
 
-    int p = y*8+x;
-    int word = tile*16+(p>>2);
-    int shift = (p&3)*4;
+    p = y * 8 + x;
+    word = tile * 16 + (p >> 2);
+    shift = (p & 3) * 4;
 
-    gfx[word] &= ~(0xF<<shift);
-    gfx[word] |= (c&15)<<shift;
+    gfx[word] &= ~(0xF << shift);
+    gfx[word] |= (color & 15) << shift;
 }
 
 static void rect(
     int tile,
-    int x1,int y1,
-    int x2,int y2,
-    int c
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    int color
 )
 {
-    for (int y=y1; y<=y2; y++)
-        for (int x=x1; x<=x2; x++)
-            px(tile,x,y,c);
+    int x;
+    int y;
+
+    for (y = y1; y <= y2; y++)
+    {
+        for (x = x1; x <= x2; x++)
+            px(tile, x, y, color);
+    }
 }
 
-static void fill(int tile,int c)
+static void fill(
+    int tile,
+    int color
+)
 {
-    rect(tile,0,0,7,7,c);
+    rect(
+        tile,
+        0, 0,
+        7, 7,
+        color
+    );
 }
 
-/* --------------------------------------------------
-   TREE HELPERS
-   -------------------------------------------------- */
+/* =========================================================
+   TREE
+   ========================================================= */
 
 static void treeBlob(
     int tile,
@@ -50,30 +76,50 @@ static void treeBlob(
     int radius
 )
 {
-    for (int y=0; y<8; y++)
-    {
-        for (int x=0; x<8; x++)
-        {
-            int dx=x-cx;
-            int dy=y-cy;
+    int x;
+    int y;
 
-            if (dx*dx+dy*dy <= radius*radius)
-                px(tile,x,y,11);
+    for (y = 0; y < 8; y++)
+    {
+        for (x = 0; x < 8; x++)
+        {
+            int dx = x - cx;
+            int dy = y - cy;
+
+            if (
+                dx * dx +
+                dy * dy <=
+                radius * radius
+            )
+            {
+                px(
+                    tile,
+                    x,
+                    y,
+                    11
+                );
+            }
         }
     }
 }
 
-static void treeShade(int tile)
+static void treeHighlight(
+    int tile,
+    int type
+)
 {
-    for (int x=1; x<7; x++)
-        px(tile,x,7,13);
+    if ((type & 1) == 0)
+    {
+        px(tile, 2, 2, 12);
+        px(tile, 3, 2, 12);
+        px(tile, 2, 3, 12);
+    }
 
-    px(tile,1,6,13);
-    px(tile,6,6,13);
-
-    px(tile,2,2,12);
-    px(tile,3,1,12);
-    px(tile,4,2,12);
+    if ((type & 2) != 0)
+    {
+        px(tile, 5, 4, 13);
+        px(tile, 6, 5, 13);
+    }
 }
 
 static void makeTreeTile(
@@ -83,342 +129,771 @@ static void makeTreeTile(
 {
     clearTile(tile);
 
-    switch(type)
+    switch (type)
     {
         case 0:
-            treeBlob(tile,6,6,5);
+            treeBlob(tile, 6, 6, 5);
             break;
 
         case 1:
-            treeBlob(tile,3,5,6);
+            treeBlob(tile, 3, 5, 6);
             break;
 
         case 2:
-            treeBlob(tile,4,5,6);
+            treeBlob(tile, 4, 5, 6);
             break;
 
         case 3:
-            treeBlob(tile,1,6,5);
+            treeBlob(tile, 1, 6, 5);
             break;
 
         case 4:
-            treeBlob(tile,6,3,6);
+            treeBlob(tile, 6, 3, 6);
             break;
 
         case 5:
-            fill(tile,11);
-            break;
-
         case 6:
-            fill(tile,11);
+        case 9:
+        case 10:
+            fill(tile, 11);
             break;
 
         case 7:
-            treeBlob(tile,1,3,6);
+            treeBlob(tile, 1, 3, 6);
             break;
 
         case 8:
-            treeBlob(tile,6,2,5);
-            break;
-
-        case 9:
-            fill(tile,11);
-            break;
-
-        case 10:
-            fill(tile,11);
+            treeBlob(tile, 6, 2, 5);
             break;
 
         case 11:
-            treeBlob(tile,1,2,5);
+            treeBlob(tile, 1, 2, 5);
             break;
 
         case 12:
-            treeBlob(tile,6,0,5);
+            treeBlob(tile, 6, 0, 5);
             break;
 
         case 13:
-            treeBlob(tile,3,0,6);
+            treeBlob(tile, 3, 0, 6);
             break;
 
         case 14:
-            treeBlob(tile,4,0,6);
+            treeBlob(tile, 4, 0, 6);
             break;
 
         case 15:
-            treeBlob(tile,1,0,5);
+            treeBlob(tile, 1, 0, 5);
             break;
     }
 
-    treeShade(tile);
+    treeHighlight(
+        tile,
+        type
+    );
 }
+
+/* =========================================================
+   TILESET
+   ========================================================= */
 
 void tilesetInit(void)
 {
-    gfx = (u16*)CHAR_BASE_ADR(0);
+    int i;
+    int x;
+    int y;
 
-    for (int i=0; i<TILE_COUNT; i++)
+    gfx =
+        (u16 *)CHAR_BASE_ADR(0);
+
+    for (i = 0; i < TILE_COUNT; i++)
         clearTile(i);
 
-    /*
-       Original palette inspired by
-       colourful early-2000s GBA RPGs.
-    */
+    /* =====================================================
+       PALETTE
+       ===================================================== */
 
-    BG_PALETTE[0]  = RGB5(0,0,0);
+    BG_PALETTE[0] =
+        RGB5(0,0,0);
 
-    BG_PALETTE[1]  = RGB5(13,25,11); /* grass */
-    BG_PALETTE[2]  = RGB5(8,19,8);   /* grass dark */
+    BG_PALETTE[1] =
+        RGB5(13,25,11);
 
-    BG_PALETTE[3]  = RGB5(25,21,13); /* path */
-    BG_PALETTE[4]  = RGB5(30,26,18); /* path light */
+    BG_PALETTE[2] =
+        RGB5(7,18,7);
 
-    BG_PALETTE[5]  = RGB5(29,25,18); /* wall */
-    BG_PALETTE[6]  = RGB5(20,16,11); /* wall shadow */
+    BG_PALETTE[3] =
+        RGB5(24,20,12);
 
-    BG_PALETTE[7]  = RGB5(8,7,6);    /* outline */
+    BG_PALETTE[4] =
+        RGB5(30,26,18);
 
-    BG_PALETTE[8]  = RGB5(24,7,6);   /* roof */
-    BG_PALETTE[9]  = RGB5(31,13,9);  /* roof light */
-    BG_PALETTE[10] = RGB5(14,4,4);   /* roof dark */
+    BG_PALETTE[5] =
+        RGB5(29,25,18);
 
-    BG_PALETTE[11] = RGB5(7,20,7);   /* tree */
-    BG_PALETTE[12] = RGB5(16,28,11); /* tree light */
-    BG_PALETTE[13] = RGB5(3,12,5);   /* tree dark */
+    BG_PALETTE[6] =
+        RGB5(20,16,11);
 
-    BG_PALETTE[14] = RGB5(8,20,29);  /* blue */
-    BG_PALETTE[15] = RGB5(31,30,22); /* cream */
+    BG_PALETTE[7] =
+        RGB5(7,6,6);
 
-    /* ==================================================
+    BG_PALETTE[8] =
+        RGB5(23,6,6);
+
+    BG_PALETTE[9] =
+        RGB5(31,13,9);
+
+    BG_PALETTE[10] =
+        RGB5(13,3,4);
+
+    BG_PALETTE[11] =
+        RGB5(7,20,7);
+
+    BG_PALETTE[12] =
+        RGB5(16,28,11);
+
+    BG_PALETTE[13] =
+        RGB5(3,11,5);
+
+    BG_PALETTE[14] =
+        RGB5(8,20,29);
+
+    BG_PALETTE[15] =
+        RGB5(31,30,22);
+
+    /* =====================================================
        GRASS
-       ================================================== */
+       ===================================================== */
 
-    fill(TILE_GRASS,1);
+    fill(
+        TILE_GRASS,
+        1
+    );
 
-    fill(TILE_GRASS_DETAIL,1);
+    fill(
+        TILE_GRASS_DETAIL,
+        1
+    );
 
     px(TILE_GRASS_DETAIL,1,6,2);
     px(TILE_GRASS_DETAIL,2,5,2);
 
-    px(TILE_GRASS_DETAIL,6,2,2);
-    px(TILE_GRASS_DETAIL,5,3,2);
+    px(TILE_GRASS_DETAIL,5,2,2);
+    px(TILE_GRASS_DETAIL,6,3,2);
 
-    fill(TILE_FLOWER,1);
+    fill(
+        TILE_FLOWER,
+        1
+    );
 
-    px(TILE_FLOWER,3,3,15);
-    px(TILE_FLOWER,2,4,15);
-    px(TILE_FLOWER,4,4,15);
+    px(TILE_FLOWER,3,2,15);
+    px(TILE_FLOWER,2,3,15);
+    px(TILE_FLOWER,4,3,15);
+    px(TILE_FLOWER,3,4,2);
     px(TILE_FLOWER,3,5,2);
 
-    /* ==================================================
+    /* =====================================================
        PATH
-       ================================================== */
+       ===================================================== */
 
-    fill(TILE_PATH,3);
+    fill(
+        TILE_PATH,
+        3
+    );
 
     px(TILE_PATH,1,2,4);
     px(TILE_PATH,6,5,4);
-    px(TILE_PATH,4,7,6);
+    px(TILE_PATH,3,7,6);
 
-    fill(TILE_PATH_EDGE_L,1);
+    fill(
+        TILE_PATH_EDGE_L,
+        1
+    );
 
-    for (int y=0; y<8; y++)
+    for (y = 0; y < 8; y++)
     {
         px(TILE_PATH_EDGE_L,5,y,2);
         px(TILE_PATH_EDGE_L,6,y,3);
         px(TILE_PATH_EDGE_L,7,y,3);
     }
 
-    fill(TILE_PATH_EDGE_R,1);
+    fill(
+        TILE_PATH_EDGE_R,
+        1
+    );
 
-    for (int y=0; y<8; y++)
+    for (y = 0; y < 8; y++)
     {
         px(TILE_PATH_EDGE_R,0,y,3);
         px(TILE_PATH_EDGE_R,1,y,3);
         px(TILE_PATH_EDGE_R,2,y,2);
     }
 
-    fill(TILE_PATH_EDGE_T,1);
+    fill(
+        TILE_PATH_EDGE_T,
+        1
+    );
 
-    for (int x=0; x<8; x++)
+    for (x = 0; x < 8; x++)
     {
         px(TILE_PATH_EDGE_T,x,5,2);
         px(TILE_PATH_EDGE_T,x,6,3);
         px(TILE_PATH_EDGE_T,x,7,3);
     }
 
-    fill(TILE_PATH_EDGE_B,1);
+    fill(
+        TILE_PATH_EDGE_B,
+        1
+    );
 
-    for (int x=0; x<8; x++)
+    for (x = 0; x < 8; x++)
     {
         px(TILE_PATH_EDGE_B,x,0,3);
         px(TILE_PATH_EDGE_B,x,1,3);
         px(TILE_PATH_EDGE_B,x,2,2);
     }
 
-    /* ==================================================
-       ROOF
+    /* =====================================================
+       HOUSE ROOF
 
-       Each piece is different now.
-       ================================================== */
+       Sloped upper pieces + tiled middle +
+       dark projecting eave.
+       ===================================================== */
 
-    clearTile(TILE_ROOF_TL);
+    clearTile(
+        TILE_ROOF_SLOPE_L
+    );
 
-    for (int y=0; y<8; y++)
+    for (y = 0; y < 8; y++)
     {
-        int start=7-y;
+        int start =
+            7 - y;
 
-        for (int x=start; x<8; x++)
-            px(TILE_ROOF_TL,x,y,8);
+        for (
+            x = start;
+            x < 8;
+            x++
+        )
+        {
+            px(
+                TILE_ROOF_SLOPE_L,
+                x,
+                y,
+                8
+            );
+        }
 
-        px(TILE_ROOF_TL,start,y,10);
+        px(
+            TILE_ROOF_SLOPE_L,
+            start,
+            y,
+            10
+        );
+
+        if (start + 1 < 8)
+        {
+            px(
+                TILE_ROOF_SLOPE_L,
+                start + 1,
+                y,
+                9
+            );
+        }
     }
 
-    fill(TILE_ROOF_TM,8);
+    fill(
+        TILE_ROOF_TOP,
+        8
+    );
 
-    for (int x=0; x<8; x++)
-        px(TILE_ROOF_TM,x,0,9);
+    for (x = 0; x < 8; x++)
+        px(TILE_ROOF_TOP,x,0,10);
 
-    px(TILE_ROOF_TM,2,4,9);
-    px(TILE_ROOF_TM,6,4,9);
+    for (x = 1; x < 8; x += 4)
+        px(TILE_ROOF_TOP,x,2,9);
 
-    clearTile(TILE_ROOF_TR);
+    for (x = 3; x < 8; x += 4)
+        px(TILE_ROOF_TOP,x,5,10);
 
-    for (int y=0; y<8; y++)
+    clearTile(
+        TILE_ROOF_SLOPE_R
+    );
+
+    for (y = 0; y < 8; y++)
     {
-        int end=y;
+        int end = y;
 
-        for (int x=0; x<=end; x++)
-            px(TILE_ROOF_TR,x,y,8);
+        for (
+            x = 0;
+            x <= end;
+            x++
+        )
+        {
+            px(
+                TILE_ROOF_SLOPE_R,
+                x,
+                y,
+                8
+            );
+        }
 
-        px(TILE_ROOF_TR,end,y,10);
+        px(
+            TILE_ROOF_SLOPE_R,
+            end,
+            y,
+            10
+        );
+
+        if (end - 1 >= 0)
+        {
+            px(
+                TILE_ROOF_SLOPE_R,
+                end - 1,
+                y,
+                9
+            );
+        }
     }
 
-    fill(TILE_ROOF_ML,8);
+    fill(
+        TILE_ROOF_RED,
+        8
+    );
 
-    for (int y=0; y<8; y++)
-        px(TILE_ROOF_ML,0,y,10);
-
-    px(TILE_ROOF_ML,3,2,9);
-
-    fill(TILE_ROOF_MM,8);
-
-    for (int x=0; x<8; x++)
-        px(TILE_ROOF_MM,x,7,10);
-
-    px(TILE_ROOF_MM,2,2,9);
-    px(TILE_ROOF_MM,6,2,9);
-
-    fill(TILE_ROOF_MR,8);
-
-    for (int y=0; y<8; y++)
-        px(TILE_ROOF_MR,7,y,10);
-
-    px(TILE_ROOF_MR,4,2,9);
-
-    fill(TILE_ROOF_BL,8);
-
-    for (int x=0; x<8; x++)
+    for (x = 0; x < 8; x++)
     {
-        px(TILE_ROOF_BL,x,5,10);
-        px(TILE_ROOF_BL,x,6,7);
+        if ((x & 3) == 0)
+            px(TILE_ROOF_RED,x,3,10);
+
+        if ((x & 3) == 2)
+            px(TILE_ROOF_RED,x,6,9);
     }
 
-    px(TILE_ROOF_BL,0,7,7);
-    px(TILE_ROOF_BL,1,7,7);
+    fill(
+        TILE_ROOF_RED_LIGHT,
+        8
+    );
 
-    fill(TILE_ROOF_BM,8);
-
-    for (int x=0; x<8; x++)
+    for (x = 0; x < 8; x++)
     {
-        px(TILE_ROOF_BM,x,5,10);
-        px(TILE_ROOF_BM,x,6,7);
-        px(TILE_ROOF_BM,x,7,6);
+        px(
+            TILE_ROOF_RED_LIGHT,
+            x,
+            0,
+            9
+        );
     }
 
-    fill(TILE_ROOF_BR,8);
+    px(TILE_ROOF_RED_LIGHT,2,3,9);
+    px(TILE_ROOF_RED_LIGHT,6,5,10);
 
-    for (int x=0; x<8; x++)
+    fill(
+        TILE_ROOF_RED_DARK,
+        8
+    );
+
+    for (x = 0; x < 8; x++)
     {
-        px(TILE_ROOF_BR,x,5,10);
-        px(TILE_ROOF_BR,x,6,7);
+        px(
+            TILE_ROOF_RED_DARK,
+            x,
+            6,
+            10
+        );
+
+        px(
+            TILE_ROOF_RED_DARK,
+            x,
+            7,
+            10
+        );
     }
 
-    px(TILE_ROOF_BR,6,7,7);
-    px(TILE_ROOF_BR,7,7,7);
+    px(TILE_ROOF_RED_DARK,1,2,9);
+    px(TILE_ROOF_RED_DARK,5,4,9);
 
-    /* ==================================================
+    fill(
+        TILE_ROOF_EAVE_L,
+        8
+    );
+
+    for (x = 0; x < 8; x++)
+    {
+        px(
+            TILE_ROOF_EAVE_L,
+            x,
+            4,
+            10
+        );
+
+        px(
+            TILE_ROOF_EAVE_L,
+            x,
+            5,
+            7
+        );
+
+        px(
+            TILE_ROOF_EAVE_L,
+            x,
+            6,
+            7
+        );
+    }
+
+    px(TILE_ROOF_EAVE_L,0,7,7);
+    px(TILE_ROOF_EAVE_L,1,7,7);
+
+    fill(
+        TILE_ROOF_EAVE_M,
+        8
+    );
+
+    for (x = 0; x < 8; x++)
+    {
+        px(TILE_ROOF_EAVE_M,x,4,10);
+        px(TILE_ROOF_EAVE_M,x,5,7);
+        px(TILE_ROOF_EAVE_M,x,6,7);
+        px(TILE_ROOF_EAVE_M,x,7,6);
+    }
+
+    fill(
+        TILE_ROOF_EAVE_R,
+        8
+    );
+
+    for (x = 0; x < 8; x++)
+    {
+        px(
+            TILE_ROOF_EAVE_R,
+            x,
+            4,
+            10
+        );
+
+        px(
+            TILE_ROOF_EAVE_R,
+            x,
+            5,
+            7
+        );
+
+        px(
+            TILE_ROOF_EAVE_R,
+            x,
+            6,
+            7
+        );
+    }
+
+    px(TILE_ROOF_EAVE_R,6,7,7);
+    px(TILE_ROOF_EAVE_R,7,7,7);
+
+    /* =====================================================
        WALL
-       ================================================== */
+       ===================================================== */
 
-    fill(TILE_WALL,5);
+    fill(
+        TILE_WALL,
+        5
+    );
 
-    px(TILE_WALL,0,0,15);
-    px(TILE_WALL,7,0,15);
+    for (y = 1; y < 8; y += 4)
+    {
+        px(TILE_WALL,1,y,15);
+        px(TILE_WALL,6,y,6);
+    }
 
-    fill(TILE_WALL_BASE,5);
+    fill(
+        TILE_WALL_DETAIL,
+        5
+    );
 
-    for (int x=0; x<8; x++)
+    for (x = 0; x < 8; x++)
+    {
+        px(
+            TILE_WALL_DETAIL,
+            x,
+            0,
+            15
+        );
+    }
+
+    px(TILE_WALL_DETAIL,1,3,6);
+    px(TILE_WALL_DETAIL,6,5,6);
+
+    fill(
+        TILE_WALL_BASE,
+        5
+    );
+
+    for (x = 0; x < 8; x++)
     {
         px(TILE_WALL_BASE,x,5,6);
         px(TILE_WALL_BASE,x,6,6);
         px(TILE_WALL_BASE,x,7,7);
     }
 
-    /* ==================================================
-       BIG WINDOWS
-       ================================================== */
+    /* =====================================================
+       WINDOW
 
-    fill(TILE_WINDOW_T,5);
+       One window = full 16x16 metatile.
+       ===================================================== */
 
-    rect(TILE_WINDOW_T,1,2,6,7,7);
-    rect(TILE_WINDOW_T,2,3,5,7,14);
+    fill(
+        TILE_WINDOW_TL,
+        5
+    );
 
-    px(TILE_WINDOW_T,2,3,15);
-    px(TILE_WINDOW_T,3,3,15);
+    rect(
+        TILE_WINDOW_TL,
+        2,2,
+        7,7,
+        7
+    );
 
-    fill(TILE_WINDOW_B,5);
+    rect(
+        TILE_WINDOW_TL,
+        3,3,
+        7,7,
+        14
+    );
 
-    rect(TILE_WINDOW_B,1,0,6,4,7);
-    rect(TILE_WINDOW_B,2,0,5,3,14);
+    px(TILE_WINDOW_TL,3,3,15);
+    px(TILE_WINDOW_TL,4,3,15);
 
-    for (int y=0; y<=3; y++)
-        px(TILE_WINDOW_B,4,y,7);
+    fill(
+        TILE_WINDOW_TR,
+        5
+    );
 
-    px(TILE_WINDOW_B,0,6,6);
-    px(TILE_WINDOW_B,7,6,6);
+    rect(
+        TILE_WINDOW_TR,
+        0,2,
+        5,7,
+        7
+    );
 
-    /* ==================================================
-       32 PIXEL DOOR
+    rect(
+        TILE_WINDOW_TR,
+        0,3,
+        4,7,
+        14
+    );
 
-       Two separate 16px metatiles use these
-       top/bottom graphics.
-       ================================================== */
+    px(TILE_WINDOW_TR,1,3,15);
 
-    fill(TILE_DOOR_T,5);
+    fill(
+        TILE_WINDOW_BL,
+        5
+    );
 
-    rect(TILE_DOOR_T,1,0,6,7,7);
-    rect(TILE_DOOR_T,2,1,5,7,6);
+    rect(
+        TILE_WINDOW_BL,
+        2,0,
+        7,4,
+        7
+    );
 
-    px(TILE_DOOR_T,2,1,15);
-    px(TILE_DOOR_T,3,1,15);
+    rect(
+        TILE_WINDOW_BL,
+        3,0,
+        7,3,
+        14
+    );
 
-    fill(TILE_DOOR_B,5);
+    for (y = 0; y <= 3; y++)
+        px(TILE_WINDOW_BL,7,y,7);
 
-    rect(TILE_DOOR_B,1,0,6,7,7);
-    rect(TILE_DOOR_B,2,0,5,6,6);
+    rect(
+        TILE_WINDOW_BL,
+        1,5,
+        7,6,
+        6
+    );
 
-    px(TILE_DOOR_B,5,3,15);
+    fill(
+        TILE_WINDOW_BR,
+        5
+    );
 
-    for (int x=1; x<=6; x++)
-        px(TILE_DOOR_B,x,7,7);
+    rect(
+        TILE_WINDOW_BR,
+        0,0,
+        5,4,
+        7
+    );
 
-    /* ==================================================
-       TREE — 32x32 UNIQUE GRAPHIC
+    rect(
+        TILE_WINDOW_BR,
+        0,0,
+        4,3,
+        14
+    );
 
-       Sixteen unique 8x8 pieces.
-       No repeated 16x16 tree blocks.
-       ================================================== */
+    rect(
+        TILE_WINDOW_BR,
+        0,5,
+        6,6,
+        6
+    );
+
+    /* =====================================================
+       DOOR
+
+       Full 16x32 entrance when two metatiles
+       are stacked vertically.
+       ===================================================== */
+
+    fill(
+        TILE_DOOR_TL,
+        5
+    );
+
+    rect(
+        TILE_DOOR_TL,
+        3,1,
+        7,7,
+        7
+    );
+
+    rect(
+        TILE_DOOR_TL,
+        4,2,
+        7,7,
+        6
+    );
+
+    fill(
+        TILE_DOOR_TR,
+        5
+    );
+
+    rect(
+        TILE_DOOR_TR,
+        0,1,
+        4,7,
+        7
+    );
+
+    rect(
+        TILE_DOOR_TR,
+        0,2,
+        3,7,
+        6
+    );
+
+    fill(
+        TILE_DOOR_BL,
+        5
+    );
+
+    rect(
+        TILE_DOOR_BL,
+        3,0,
+        7,7,
+        7
+    );
+
+    rect(
+        TILE_DOOR_BL,
+        4,0,
+        7,6,
+        6
+    );
+
+    fill(
+        TILE_DOOR_BR,
+        5
+    );
+
+    rect(
+        TILE_DOOR_BR,
+        0,0,
+        4,7,
+        7
+    );
+
+    rect(
+        TILE_DOOR_BR,
+        0,0,
+        3,6,
+        6
+    );
+
+    px(
+        TILE_DOOR_BR,
+        2,
+        3,
+        15
+    );
+
+    for (x = 0; x < 8; x++)
+    {
+        px(
+            TILE_DOOR_BL,
+            x,
+            7,
+            7
+        );
+
+        px(
+            TILE_DOOR_BR,
+            x,
+            7,
+            7
+        );
+    }
+
+    /* =====================================================
+       SIGN
+       ===================================================== */
+
+    fill(
+        TILE_SIGN,
+        5
+    );
+
+    rect(
+        TILE_SIGN,
+        1,2,
+        6,6,
+        6
+    );
+
+    rect(
+        TILE_SIGN,
+        2,3,
+        5,5,
+        15
+    );
+
+    px(TILE_SIGN,3,4,8);
+    px(TILE_SIGN,4,4,8);
+
+    /* =====================================================
+       FLOWER BOX
+       ===================================================== */
+
+    fill(
+        TILE_FLOWER_BOX,
+        5
+    );
+
+    rect(
+        TILE_FLOWER_BOX,
+        0,5,
+        7,7,
+        6
+    );
+
+    px(TILE_FLOWER_BOX,1,4,9);
+    px(TILE_FLOWER_BOX,3,3,15);
+    px(TILE_FLOWER_BOX,5,4,9);
+
+    /* =====================================================
+       TREES
+       ===================================================== */
 
     makeTreeTile(TILE_TREE_00,0);
     makeTreeTile(TILE_TREE_01,1);
@@ -440,14 +915,28 @@ void tilesetInit(void)
     makeTreeTile(TILE_TREE_32,14);
     makeTreeTile(TILE_TREE_33,15);
 
-    /* ==================================================
+    /* =====================================================
        BUSH
-       ================================================== */
+       ===================================================== */
 
-    fill(TILE_BUSH,1);
+    fill(
+        TILE_BUSH,
+        1
+    );
 
-    rect(TILE_BUSH,1,4,6,6,11);
-    rect(TILE_BUSH,2,3,5,6,11);
+    rect(
+        TILE_BUSH,
+        1,4,
+        6,6,
+        11
+    );
+
+    rect(
+        TILE_BUSH,
+        2,3,
+        5,6,
+        11
+    );
 
     px(TILE_BUSH,2,3,12);
     px(TILE_BUSH,5,4,12);
@@ -455,11 +944,14 @@ void tilesetInit(void)
     px(TILE_BUSH,1,6,13);
     px(TILE_BUSH,6,6,13);
 
-    /* ==================================================
+    /* =====================================================
        WATER
-       ================================================== */
+       ===================================================== */
 
-    fill(TILE_WATER,14);
+    fill(
+        TILE_WATER,
+        14
+    );
 
     px(TILE_WATER,1,2,15);
     px(TILE_WATER,2,2,15);

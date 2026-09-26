@@ -14,6 +14,36 @@ enum
     DIR_RIGHT
 };
 
+/*
+    Raw GBA OAM bits.
+
+    attr0:
+    bits 8-9  = object mode
+    bit  13   = 256-color when set; clear = 16-color
+    bits 14-15 = shape
+
+    attr1:
+    bits 14-15 = size
+
+    For a 16x32 sprite:
+    shape = TALL
+    size  = 1
+*/
+
+#define OBJ_Y_MASK          0x00FF
+#define OBJ_X_MASK          0x01FF
+
+#define OBJ_MODE_HIDE       0x0200
+
+#define OBJ_SHAPE_TALL      0x8000
+#define OBJ_SIZE_16X32      0x4000
+
+#define OBJ_PRIORITY_1      0x0400
+
+/* =========================================================
+   SPRITE DRAWING
+   ========================================================= */
+
 static void spritePixel(
     u16 *gfx,
     int x,
@@ -31,7 +61,9 @@ static void spritePixel(
         y < 0 ||
         y >= 32
     )
+    {
         return;
+    }
 
     p =
         y * 16 + x;
@@ -82,14 +114,19 @@ static void clearSprite(
     int i;
 
     /*
-        16 x 32 @ 4bpp =
-        256 bytes =
-        128 u16
+        16 x 32 pixels
+        4 bits per pixel
+        = 256 bytes
+        = 128 u16
     */
 
     for (i = 0; i < 128; i++)
         gfx[i] = 0;
 }
+
+/* =========================================================
+   APPEARANCE
+   ========================================================= */
 
 static int getHairColor(void)
 {
@@ -131,34 +168,47 @@ static int getShirtColor(void)
     }
 }
 
+/* =========================================================
+   PLAYER GRAPHICS
+   ========================================================= */
+
 static void makePlayerFrame(
     u16 *gfx,
     int direction,
     int frame
 )
 {
-    int hair =
+    int hair;
+    int shirt;
+
+    int leftLegOffset = 0;
+    int rightLegOffset = 0;
+
+    hair =
         getHairColor();
 
-    int shirt =
+    shirt =
         getShirtColor();
-
-    int legOffset = 0;
 
     clearSprite(
         gfx
     );
 
     /*
-        Walk animation.
+        Walking animation.
+
+        The feet alternate slightly.
     */
 
     if (frame == 1)
-        legOffset = 1;
+    {
+        leftLegOffset = -1;
+        rightLegOffset = 1;
+    }
 
-    /*
-        Shadow
-    */
+    /* =====================================================
+       SHADOW
+       ===================================================== */
 
     spriteRect(
         gfx,
@@ -169,58 +219,62 @@ static void makePlayerFrame(
         1
     );
 
-    /*
-        Legs
-    */
+    /* =====================================================
+       LEGS
+       ===================================================== */
 
     spriteRect(
         gfx,
-        5 - legOffset,
+        5 + leftLegOffset,
         22,
-        7 - legOffset,
+        7 + leftLegOffset,
         28,
         10
     );
 
     spriteRect(
         gfx,
-        8 + legOffset,
+        8 + rightLegOffset,
         22,
-        10 + legOffset,
+        10 + rightLegOffset,
         28,
         10
     );
 
-    /*
-        Shoes
-    */
+    /* =====================================================
+       SHOES
+       ===================================================== */
 
     spriteRect(
         gfx,
-        4 - legOffset,
+        4 + leftLegOffset,
         28,
-        7 - legOffset,
+        7 + leftLegOffset,
         30,
         1
     );
 
     spriteRect(
         gfx,
-        8 + legOffset,
+        8 + rightLegOffset,
         28,
-        11 + legOffset,
+        11 + rightLegOffset,
         30,
         1
     );
 
-    /*
-        Torso.
-    */
+    /* =====================================================
+       BODY
+       ===================================================== */
 
     if (
         characterConfig.gender == 0
     )
     {
+        /*
+            Male body
+        */
+
         spriteRect(
             gfx,
             4,
@@ -250,11 +304,28 @@ static void makePlayerFrame(
     }
     else
     {
+        /*
+            Female body
+        */
+
         spriteRect(
             gfx,
             5,
             14,
             10,
+            21,
+            shirt
+        );
+
+        /*
+            Lower clothing shape.
+        */
+
+        spriteRect(
+            gfx,
+            4,
+            20,
+            11,
             23,
             shirt
         );
@@ -278,9 +349,9 @@ static void makePlayerFrame(
         );
     }
 
-    /*
-        Neck
-    */
+    /* =====================================================
+       NECK
+       ===================================================== */
 
     spriteRect(
         gfx,
@@ -291,9 +362,9 @@ static void makePlayerFrame(
         11
     );
 
-    /*
-        Head
-    */
+    /* =====================================================
+       HEAD
+       ===================================================== */
 
     spriteRect(
         gfx,
@@ -305,8 +376,19 @@ static void makePlayerFrame(
     );
 
     /*
-        ears
+        Slightly rounder face.
     */
+
+    spriteRect(
+        gfx,
+        5,
+        4,
+        10,
+        14,
+        11
+    );
+
+    /* ears */
 
     spriteRect(
         gfx,
@@ -326,16 +408,16 @@ static void makePlayerFrame(
         11
     );
 
-    /*
-        Hair.
-    */
+    /* =====================================================
+       HAIR
+       ===================================================== */
 
     spriteRect(
         gfx,
         4,
         3,
         11,
-        7,
+        6,
         hair
     );
 
@@ -358,6 +440,33 @@ static void makePlayerFrame(
     );
 
     /*
+        Hair crown shape.
+    */
+
+    spritePixel(
+        gfx,
+        5,
+        2,
+        hair
+    );
+
+    spriteRect(
+        gfx,
+        6,
+        2,
+        9,
+        2,
+        hair
+    );
+
+    spritePixel(
+        gfx,
+        10,
+        2,
+        hair
+    );
+
+    /*
         Long hair.
     */
 
@@ -370,7 +479,7 @@ static void makePlayerFrame(
             3,
             8,
             4,
-            15,
+            16,
             hair
         );
 
@@ -379,17 +488,37 @@ static void makePlayerFrame(
             11,
             8,
             12,
-            15,
+            16,
+            hair
+        );
+
+        spritePixel(
+            gfx,
+            4,
+            16,
+            hair
+        );
+
+        spritePixel(
+            gfx,
+            11,
+            16,
             hair
         );
     }
 
-    /*
-        Directional face details.
-    */
+    /* =====================================================
+       FACE / DIRECTION
+       ===================================================== */
 
-    if (direction == DIR_DOWN)
+    if (
+        direction == DIR_DOWN
+    )
     {
+        /*
+            Front-facing eyes.
+        */
+
         spritePixel(
             gfx,
             6,
@@ -403,6 +532,10 @@ static void makePlayerFrame(
             9,
             1
         );
+
+        /*
+            tiny face shadow
+        */
 
         spritePixel(
             gfx,
@@ -447,20 +580,44 @@ static void makePlayerFrame(
             3
         );
     }
+    else
+    {
+        /*
+            Back-facing hair.
+        */
 
-    /*
-        Shirt highlight.
-    */
+        spriteRect(
+            gfx,
+            5,
+            7,
+            10,
+            11,
+            hair
+        );
+    }
 
-    spriteRect(
-        gfx,
-        5,
-        15,
-        6,
-        18,
-        12
-    );
+    /* =====================================================
+       CLOTHING HIGHLIGHT
+       ===================================================== */
+
+    if (
+        direction != DIR_UP
+    )
+    {
+        spriteRect(
+            gfx,
+            5,
+            15,
+            6,
+            18,
+            12
+        );
+    }
 }
+
+/* =========================================================
+   COLLISION
+   ========================================================= */
 
 static int canMoveTo(
     int x,
@@ -468,8 +625,10 @@ static int canMoveTo(
 )
 {
     /*
-        Feet-only collision.
-        Allows the head/body to overlap visual scenery.
+        Collision only around feet.
+
+        This makes the player feel like a top-down RPG
+        character rather than a rectangular object.
     */
 
     if (
@@ -478,7 +637,9 @@ static int canMoveTo(
             y + 26
         )
     )
+    {
         return 0;
+    }
 
     if (
         worldIsBlocked(
@@ -486,7 +647,9 @@ static int canMoveTo(
             y + 26
         )
     )
+    {
         return 0;
+    }
 
     if (
         worldIsBlocked(
@@ -494,7 +657,9 @@ static int canMoveTo(
             y + 29
         )
     )
+    {
         return 0;
+    }
 
     if (
         worldIsBlocked(
@@ -502,10 +667,16 @@ static int canMoveTo(
             y + 29
         )
     )
+    {
         return 0;
+    }
 
     return 1;
 }
+
+/* =========================================================
+   INIT
+   ========================================================= */
 
 void playerInit(void)
 {
@@ -521,17 +692,28 @@ void playerInit(void)
 
     player.animationTimer = 0;
 
+    /* =====================================================
+       OBJ PALETTE
+       ===================================================== */
+
     /*
-        OBJ palette.
+        Transparent
     */
 
     SPRITE_PALETTE[0] =
         RGB5(0,0,0);
 
+    /*
+        Outline / shoes
+    */
+
     SPRITE_PALETTE[1] =
         RGB5(3,3,4);
 
-    /* hair */
+    /*
+        Hair colours
+    */
+
     SPRITE_PALETTE[2] =
         RGB5(2,2,3);
 
@@ -544,7 +726,10 @@ void playerInit(void)
     SPRITE_PALETTE[5] =
         RGB5(21,7,3);
 
-    /* clothes */
+    /*
+        Clothes
+    */
+
     SPRITE_PALETTE[6] =
         RGB5(5,14,29);
 
@@ -557,29 +742,46 @@ void playerInit(void)
     SPRITE_PALETTE[9] =
         RGB5(18,7,25);
 
-    /* trousers */
+    /*
+        Trousers
+    */
+
     SPRITE_PALETTE[10] =
         RGB5(8,9,12);
 
-    /* skin */
+    /*
+        Skin
+    */
+
     SPRITE_PALETTE[11] =
         RGB5(27,18,13);
 
-    /* highlight */
+    /*
+        Highlight
+    */
+
     SPRITE_PALETTE[12] =
         RGB5(31,31,31);
 
-    for (i = 0; i < 128; i++)
-        ((u16 *)SPRITE_GFX)[i] = 0;
+    /* =====================================================
+       CLEAR OBJ VRAM
+       ===================================================== */
 
-    /*
-        Hide all OAM objects first.
-    */
+    for (i = 0; i < 128; i++)
+    {
+        ((u16 *)SPRITE_GFX)[i] = 0;
+    }
+
+    /* =====================================================
+       HIDE ALL SPRITES
+
+       attr0 object mode = 2 means disabled.
+       ===================================================== */
 
     for (i = 0; i < 128; i++)
     {
         OAM[i].attr0 =
-            ATTR0_HIDE;
+            OBJ_MODE_HIDE;
 
         OAM[i].attr1 = 0;
         OAM[i].attr2 = 0;
@@ -592,26 +794,38 @@ void playerInit(void)
     );
 }
 
+/* =========================================================
+   UPDATE
+   ========================================================= */
+
 void playerUpdate(void)
 {
-    int newX =
+    int newX;
+    int newY;
+    int moving;
+
+    u16 held;
+
+    newX =
         player.x;
 
-    int newY =
+    newY =
         player.y;
 
-    int moving = 0;
+    moving = 0;
 
     scanKeys();
 
-    u16 held =
+    held =
         keysHeld();
 
     /*
-        No diagonal movement.
+        No diagonal movement yet.
     */
 
-    if (held & KEY_UP)
+    if (
+        held & KEY_UP
+    )
     {
         newY--;
 
@@ -685,6 +899,10 @@ void playerUpdate(void)
         player.frame = 0;
     }
 
+    /*
+        Rebuild current 16x32 frame.
+    */
+
     makePlayerFrame(
         (u16 *)SPRITE_GFX,
         player.direction,
@@ -692,44 +910,71 @@ void playerUpdate(void)
     );
 }
 
+/* =========================================================
+   DRAW
+   ========================================================= */
+
 void playerDraw(
     int cameraX,
     int cameraY
 )
 {
-    int screenX =
+    int screenX;
+    int screenY;
+
+    screenX =
         player.x -
         cameraX;
 
-    int screenY =
+    screenY =
         player.y -
         cameraY;
 
-    OAM[0].attr0 =
-        ATTR0_SQUARE |
-        ATTR0_4BPP |
-        (screenY & 255);
-
     /*
-        16 x 32 sprite uses wide shape.
+        ATTR0
+
+        bits 0-7   Y
+        bits 14-15 shape
+
+        TALL + 4bpp.
+        4bpp is the default, so no special flag required.
     */
 
     OAM[0].attr0 =
-        ATTR0_TALL |
-        ATTR0_4BPP |
-        (screenY & 255);
+        (screenY & OBJ_Y_MASK) |
+        OBJ_SHAPE_TALL;
+
+    /*
+        ATTR1
+
+        bits 0-8   X
+        bits 14-15 size
+
+        Tall + size 1 = 16x32.
+    */
 
     OAM[0].attr1 =
-        ATTR1_SIZE_1 |
-        (screenX & 511);
+        (screenX & OBJ_X_MASK) |
+        OBJ_SIZE_16X32;
+
+    /*
+        ATTR2
+
+        tile 0
+        priority 1
+        palette bank 0
+    */
 
     OAM[0].attr2 =
-        0 |
-        ATTR2_PRIORITY(1);
+        OBJ_PRIORITY_1;
+
+    /*
+        Copy shadow OAM to hardware OAM.
+    */
 
     CpuFastSet(
         OAM,
-        OAM_MEM,
+        (void *)0x07000000,
         COPY32 |
         (sizeof(OAM) / 4)
     );

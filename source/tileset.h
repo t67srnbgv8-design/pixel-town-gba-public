@@ -17,25 +17,41 @@ enum
     TILE_PATH_EDGE_T,
     TILE_PATH_EDGE_B,
 
-    TILE_ROOF_TL,
-    TILE_ROOF_TM,
-    TILE_ROOF_TR,
-    TILE_ROOF_ML,
-    TILE_ROOF_MM,
-    TILE_ROOF_MR,
-    TILE_ROOF_BL,
-    TILE_ROOF_BM,
-    TILE_ROOF_BR,
+    /* roof */
+    TILE_ROOF_SLOPE_L,
+    TILE_ROOF_TOP,
+    TILE_ROOF_SLOPE_R,
 
+    TILE_ROOF_RED,
+    TILE_ROOF_RED_LIGHT,
+    TILE_ROOF_RED_DARK,
+
+    TILE_ROOF_EAVE_L,
+    TILE_ROOF_EAVE_M,
+    TILE_ROOF_EAVE_R,
+
+    /* facade */
     TILE_WALL,
+    TILE_WALL_DETAIL,
     TILE_WALL_BASE,
 
-    TILE_WINDOW_T,
-    TILE_WINDOW_B,
+    /* windows */
+    TILE_WINDOW_TL,
+    TILE_WINDOW_TR,
+    TILE_WINDOW_BL,
+    TILE_WINDOW_BR,
 
-    TILE_DOOR_T,
-    TILE_DOOR_B,
+    /* door */
+    TILE_DOOR_TL,
+    TILE_DOOR_TR,
+    TILE_DOOR_BL,
+    TILE_DOOR_BR,
 
+    /* decoration */
+    TILE_SIGN,
+    TILE_FLOWER_BOX,
+
+    /* trees */
     TILE_TREE_00,
     TILE_TREE_01,
     TILE_TREE_02,

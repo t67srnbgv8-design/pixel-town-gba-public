@@ -7,31 +7,42 @@
     PIXEL TOWN
     Developer: BAYA
 
-    Intro:
+    Ablauf:
+
     BAYA PRESENTS
-        ->
+         ->
     PIXEL TOWN
-        ->
+         ->
     PRESS START
-        ->
+         ->
     Game
+
+    WICHTIG:
+    Während der sichtbaren Title-Sequenz wird
+    der komplette Mode-3-Framebuffer NICHT mehr
+    jedes Frame neu gezeichnet.
+
+    Dadurch vermeiden wir das Flackern/Tearing,
+    das besonders in Delta sichtbar war.
 */
 
 #define SCREEN_W 240
 #define SCREEN_H 160
 
-/*
-    Direct GBA BLDCNT bits.
-    Dadurch sind wir nicht von libgba BLD_* Makros abhängig.
-*/
+
+/* =========================================================
+   HARDWARE BLEND DEFINITIONS
+   ========================================================= */
 
 #define INTRO_BLD_BG2      (1 << 2)
 #define INTRO_BLD_OBJ      (1 << 4)
 #define INTRO_BLD_BACKDROP (1 << 5)
+
 #define INTRO_BLD_BLACK    (3 << 6)
 
 #define INTRO_FADE_TARGETS \
     (INTRO_BLD_BG2 | INTRO_BLD_OBJ | INTRO_BLD_BACKDROP)
+
 
 static u16 *framebuffer = (u16 *)MODE3_FB;
 
@@ -45,7 +56,9 @@ static void waitFrames(int frames)
     int i;
 
     for (i = 0; i < frames; i++)
+    {
         VBlankIntrWait();
+    }
 }
 
 
@@ -110,7 +123,7 @@ static void clearScreen(u16 color)
 
 
 /* =========================================================
-   FONT
+   SMALL PIXEL FONT
    ========================================================= */
 
 typedef struct
@@ -120,16 +133,6 @@ typedef struct
 
 } IntroGlyph;
 
-
-/*
-    Original simple 5x7 pixel font.
-
-    Only letters required by:
-    BAYA
-    PRESENTS
-    PIXEL TOWN
-    PRESS START
-*/
 
 static const IntroGlyph introFont[] =
 {
@@ -355,8 +358,7 @@ static void drawCharacter(
     int row;
     int column;
 
-    glyph =
-        findGlyph(character);
+    glyph = findGlyph(character);
 
     if (!glyph)
         return;
@@ -394,8 +396,7 @@ static int getTextWidth(
 {
     int length;
 
-    length =
-        strlen(text);
+    length = strlen(text);
 
     if (length <= 0)
         return 0;
@@ -456,7 +457,8 @@ static void drawCenteredText(
         );
 
     x =
-        (SCREEN_W - width) / 2;
+        (SCREEN_W - width) /
+        2;
 
     drawText(
         x,
@@ -480,14 +482,19 @@ static void fadeIn(void)
         INTRO_FADE_TARGETS |
         INTRO_BLD_BLACK;
 
+    /*
+        Start completely black.
+    */
+
+    REG_BLDY = 16;
+
     for (
         level = 16;
         level >= 0;
         level--
     )
     {
-        REG_BLDY =
-            level;
+        REG_BLDY = level;
 
         waitFrames(2);
     }
@@ -511,11 +518,15 @@ static void fadeOut(void)
         level++
     )
     {
-        REG_BLDY =
-            level;
+        REG_BLDY = level;
 
         waitFrames(2);
     }
+
+    /*
+        Bildschirm bleibt danach schwarz,
+        bis wir den Modus wechseln.
+    */
 }
 
 
@@ -526,39 +537,20 @@ static void fadeOut(void)
 static void drawBayaLogo(void)
 {
     const u16 black =
-        RGB5(
-            0,
-            0,
-            0
-        );
+        RGB5(0,0,0);
 
     const u16 white =
-        RGB5(
-            31,
-            31,
-            31
-        );
+        RGB5(31,31,31);
 
     const u16 shadow =
-        RGB5(
-            8,
-            10,
-            13
-        );
+        RGB5(8,10,13);
 
     const u16 blue =
-        RGB5(
-            6,
-            18,
-            31
-        );
+        RGB5(6,18,31);
 
     const u16 gray =
-        RGB5(
-            19,
-            21,
-            24
-        );
+        RGB5(19,21,24);
+
 
     clearScreen(
         black
@@ -566,7 +558,7 @@ static void drawBayaLogo(void)
 
 
     /*
-        Shadow gives BAYA some depth.
+        Logo shadow
     */
 
     drawCenteredText(
@@ -578,7 +570,7 @@ static void drawBayaLogo(void)
 
 
     /*
-        Main logo.
+        Main BAYA logo
     */
 
     drawCenteredText(
@@ -590,7 +582,7 @@ static void drawBayaLogo(void)
 
 
     /*
-        Accent line.
+        Logo accent
     */
 
     fillRect(
@@ -603,7 +595,7 @@ static void drawBayaLogo(void)
 
 
     /*
-        Developer subtitle.
+        PRESENTS
     */
 
     drawCenteredText(
@@ -619,12 +611,13 @@ static void runBayaSequence(void)
 {
     int level;
 
+    /*
+        Logo wird aufgebaut,
+        bevor es sichtbar wird.
+    */
+
     drawBayaLogo();
 
-
-    /*
-        Begin completely black.
-    */
 
     REG_BLDCNT =
         INTRO_FADE_TARGETS |
@@ -634,7 +627,7 @@ static void runBayaSequence(void)
 
 
     /*
-        Fade BAYA in.
+        Fade in
     */
 
     for (
@@ -643,22 +636,21 @@ static void runBayaSequence(void)
         level--
     )
     {
-        REG_BLDY =
-            level;
+        REG_BLDY = level;
 
         waitFrames(2);
     }
 
 
     /*
-        Logo stays visible.
+        Logo stehen lassen.
     */
 
     waitFrames(70);
 
 
     /*
-        Fade back to black.
+        Fade out
     */
 
     for (
@@ -667,22 +659,18 @@ static void runBayaSequence(void)
         level++
     )
     {
-        REG_BLDY =
-            level;
+        REG_BLDY = level;
 
         waitFrames(2);
     }
 
 
-    REG_BLDCNT = 0;
-    REG_BLDY = 0;
+    /*
+        Schwarz halten.
+    */
 
     clearScreen(
-        RGB5(
-            0,
-            0,
-            0
-        )
+        RGB5(0,0,0)
     );
 
     waitFrames(8);
@@ -731,37 +719,17 @@ static void drawSmallTree(
 )
 {
     const u16 trunk =
-        RGB5(
-            10,
-            6,
-            3
-        );
+        RGB5(10,6,3);
 
     const u16 darkGreen =
-        RGB5(
-            3,
-            12,
-            5
-        );
+        RGB5(3,12,5);
 
     const u16 green =
-        RGB5(
-            7,
-            20,
-            7
-        );
+        RGB5(7,20,7);
 
     const u16 lightGreen =
-        RGB5(
-            14,
-            27,
-            10
-        );
+        RGB5(14,27,10);
 
-
-    /*
-        trunk
-    */
 
     fillRect(
         x + 9,
@@ -772,10 +740,6 @@ static void drawSmallTree(
     );
 
 
-    /*
-        canopy shadow
-    */
-
     fillRect(
         x + 2,
         y + 5,
@@ -785,10 +749,6 @@ static void drawSmallTree(
     );
 
 
-    /*
-        canopy
-    */
-
     fillRect(
         x + 5,
         y + 1,
@@ -796,6 +756,7 @@ static void drawSmallTree(
         20,
         green
     );
+
 
     fillRect(
         x,
@@ -805,10 +766,6 @@ static void drawSmallTree(
         green
     );
 
-
-    /*
-        highlight
-    */
 
     fillRect(
         x + 7,
@@ -827,71 +784,35 @@ static void drawHouse(
 )
 {
     const u16 outline =
-        RGB5(
-            6,
-            5,
-            5
-        );
+        RGB5(6,5,5);
 
     const u16 roofDark =
-        RGB5(
-            13,
-            3,
-            4
-        );
+        RGB5(13,3,4);
 
     const u16 roof =
-        RGB5(
-            24,
-            7,
-            6
-        );
+        RGB5(24,7,6);
 
     const u16 roofLight =
-        RGB5(
-            31,
-            12,
-            8
-        );
+        RGB5(31,12,8);
 
     const u16 wall =
-        RGB5(
-            29,
-            25,
-            18
-        );
+        RGB5(29,25,18);
 
     const u16 wallShadow =
-        RGB5(
-            20,
-            16,
-            11
-        );
+        RGB5(20,16,11);
 
     const u16 window =
-        RGB5(
-            7,
-            19,
-            29
-        );
+        RGB5(7,19,29);
 
     const u16 windowLight =
-        RGB5(
-            18,
-            27,
-            31
-        );
+        RGB5(18,27,31);
 
     const u16 door =
-        RGB5(
-            11,
-            7,
-            4
-        );
+        RGB5(11,7,4);
 
 
     /*
-        Wall shadow.
+        Wall shadow
     */
 
     fillRect(
@@ -904,7 +825,7 @@ static void drawHouse(
 
 
     /*
-        Main wall.
+        Main wall
     */
 
     fillRect(
@@ -917,7 +838,7 @@ static void drawHouse(
 
 
     /*
-        Roof dark outline.
+        Roof outline
     */
 
     fillRect(
@@ -930,7 +851,7 @@ static void drawHouse(
 
 
     /*
-        Roof.
+        Dark roof layer
     */
 
     fillRect(
@@ -941,6 +862,11 @@ static void drawHouse(
         roofDark
     );
 
+
+    /*
+        Main roof
+    */
+
     fillRect(
         x,
         y + 3,
@@ -948,6 +874,11 @@ static void drawHouse(
         11,
         roof
     );
+
+
+    /*
+        Roof highlight
+    */
 
     fillRect(
         x + 5,
@@ -959,7 +890,7 @@ static void drawHouse(
 
 
     /*
-        Door.
+        Door outline
     */
 
     fillRect(
@@ -969,6 +900,11 @@ static void drawHouse(
         19,
         outline
     );
+
+
+    /*
+        Door
+    */
 
     fillRect(
         x + width / 2 - 3,
@@ -980,7 +916,7 @@ static void drawHouse(
 
 
     /*
-        Left window.
+        Left window
     */
 
     fillRect(
@@ -1009,7 +945,7 @@ static void drawHouse(
 
 
     /*
-        Right window.
+        Right window
     */
 
     fillRect(
@@ -1043,53 +979,25 @@ static void drawTitleBackground(
 )
 {
     const u16 sky =
-        RGB5(
-            10,
-            20,
-            30
-        );
+        RGB5(10,20,30);
 
     const u16 cloud =
-        RGB5(
-            24,
-            29,
-            31
-        );
+        RGB5(24,29,31);
 
     const u16 distantGrass =
-        RGB5(
-            8,
-            18,
-            8
-        );
+        RGB5(8,18,8);
 
     const u16 grass =
-        RGB5(
-            12,
-            25,
-            10
-        );
+        RGB5(12,25,10);
 
     const u16 grassLight =
-        RGB5(
-            16,
-            28,
-            12
-        );
+        RGB5(16,28,12);
 
     const u16 road =
-        RGB5(
-            24,
-            20,
-            12
-        );
+        RGB5(24,20,12);
 
     const u16 roadLight =
-        RGB5(
-            29,
-            25,
-            17
-        );
+        RGB5(29,25,17);
 
 
     clearScreen(
@@ -1098,7 +1006,7 @@ static void drawTitleBackground(
 
 
     /*
-        Clouds move slightly during intro.
+        Clouds
     */
 
     drawCloud(
@@ -1115,7 +1023,7 @@ static void drawTitleBackground(
 
 
     /*
-        Distant horizon.
+        Background grass
     */
 
     fillRect(
@@ -1128,7 +1036,7 @@ static void drawTitleBackground(
 
 
     /*
-        Ground.
+        Main grass
     */
 
     fillRect(
@@ -1140,10 +1048,6 @@ static void drawTitleBackground(
     );
 
 
-    /*
-        Grass highlight.
-    */
-
     fillRect(
         0,
         87,
@@ -1154,7 +1058,7 @@ static void drawTitleBackground(
 
 
     /*
-        Houses.
+        Houses
     */
 
     drawHouse(
@@ -1171,7 +1075,7 @@ static void drawTitleBackground(
 
 
     /*
-        Trees.
+        Trees
     */
 
     drawSmallTree(
@@ -1191,7 +1095,7 @@ static void drawTitleBackground(
 
 
     /*
-        Road.
+        Foreground road
     */
 
     fillRect(
@@ -1221,36 +1125,20 @@ static void drawTitleLogo(
 )
 {
     const u16 deepShadow =
-        RGB5(
-            2,
-            4,
-            6
-        );
+        RGB5(2,4,6);
 
     const u16 border =
-        RGB5(
-            8,
-            10,
-            13
-        );
+        RGB5(8,10,13);
 
     const u16 cream =
-        RGB5(
-            31,
-            30,
-            22
-        );
+        RGB5(31,30,22);
 
     const u16 gold =
-        RGB5(
-            31,
-            23,
-            6
-        );
+        RGB5(31,23,6);
 
 
     /*
-        PIXEL shadow.
+        PIXEL shadow
     */
 
     drawCenteredText(
@@ -1262,7 +1150,7 @@ static void drawTitleLogo(
 
 
     /*
-        PIXEL border-ish offset.
+        PIXEL border
     */
 
     drawCenteredText(
@@ -1274,7 +1162,7 @@ static void drawTitleLogo(
 
 
     /*
-        PIXEL foreground.
+        PIXEL face
     */
 
     drawCenteredText(
@@ -1286,7 +1174,7 @@ static void drawTitleLogo(
 
 
     /*
-        TOWN shadow.
+        TOWN shadow
     */
 
     drawCenteredText(
@@ -1298,7 +1186,7 @@ static void drawTitleLogo(
 
 
     /*
-        TOWN foreground.
+        TOWN face
     */
 
     drawCenteredText(
@@ -1311,7 +1199,7 @@ static void drawTitleLogo(
 
 
 /* =========================================================
-   TITLE SEQUENCE
+   PRESS START
    ========================================================= */
 
 static void drawPressStart(
@@ -1319,7 +1207,8 @@ static void drawPressStart(
 )
 {
     /*
-        Clear prompt area first.
+        Löscht nur den kleinen Bereich des Prompts.
+        Kein Fullscreen-Redraw.
     */
 
     fillRect(
@@ -1327,54 +1216,44 @@ static void drawPressStart(
         121,
         120,
         12,
-        RGB5(
-            12,
-            25,
-            10
-        )
+        RGB5(12,25,10)
     );
 
 
     if (visible)
     {
         /*
-            Dark shadow.
+            Text shadow
         */
 
         drawCenteredText(
             124,
             "PRESS START",
             1,
-            RGB5(
-                3,
-                5,
-                4
-            )
+            RGB5(3,5,4)
         );
 
 
         /*
-            Main text.
+            Main text
         */
 
         drawCenteredText(
             122,
             "PRESS START",
             1,
-            RGB5(
-                31,
-                31,
-                31
-            )
+            RGB5(31,31,31)
         );
     }
 }
 
 
+/* =========================================================
+   TITLE SEQUENCE
+   ========================================================= */
+
 static void runTitleSequence(void)
 {
-    int frame;
-
     int blinkTimer;
     int promptVisible;
 
@@ -1382,17 +1261,20 @@ static void runTitleSequence(void)
 
 
     /*
-        Start scene hidden behind black.
+        -----------------------------------------------------
+        FLICKER FIX
+        -----------------------------------------------------
+
+        Der Bildschirm bleibt komplett schwarz,
+        während die gesamte Titelszene in VRAM
+        aufgebaut wird.
+
+        Früher wurde hier der komplette Mode-3-
+        Framebuffer 24 Frames lang neu gezeichnet.
+
+        Genau das konnte in Delta sichtbares
+        Tearing/Flackern verursachen.
     */
-
-    drawTitleBackground(
-        12
-    );
-
-    drawTitleLogo(
-        -8
-    );
-
 
     REG_BLDCNT =
         INTRO_FADE_TARGETS |
@@ -1402,76 +1284,32 @@ static void runTitleSequence(void)
 
 
     /*
-        Fade title scene in.
+        Komplette fertige Szene EINMAL zeichnen.
+    */
+
+    drawTitleBackground(0);
+
+    drawTitleLogo(0);
+
+    drawPressStart(1);
+
+
+    /*
+        Jetzt erst wird das fertige Bild sichtbar.
     */
 
     fadeIn();
 
 
     /*
-        Small entrance animation.
-
-        Background clouds move and title settles downward.
+        PRESS START loop
     */
-
-    for (
-        frame = 0;
-        frame < 24;
-        frame++
-    )
-    {
-        VBlankIntrWait();
-
-        drawTitleBackground(
-            12 - frame / 2
-        );
-
-        if (frame < 12)
-        {
-            drawTitleLogo(
-                -8 + frame / 2
-            );
-        }
-        else
-        {
-            drawTitleLogo(
-                -2
-            );
-        }
-    }
-
-
-    /*
-        Final stable title.
-    */
-
-    drawTitleBackground(
-        0
-    );
-
-    drawTitleLogo(
-        0
-    );
-
-    drawPressStart(
-        1
-    );
-
 
     blinkTimer = 0;
     promptVisible = 1;
 
-
-    /*
-        Clear old key state.
-    */
-
     scanKeys();
 
-
-    /*
-        Wait for START.
-    */
 
     while (1)
     {
@@ -1479,9 +1317,12 @@ static void runTitleSequence(void)
 
         scanKeys();
 
-        keys =
-            keysDown();
+        keys = keysDown();
 
+
+        /*
+            START pressed.
+        */
 
         if (keys & KEY_START)
         {
@@ -1489,12 +1330,15 @@ static void runTitleSequence(void)
         }
 
 
-        blinkTimer++;
-
-
         /*
-            Blink twice per second-ish.
-    */
+            Nur der kleine Prompt-Bereich
+            wird alle 30 Frames geändert.
+
+            Der Hintergrund wird NICHT
+            erneut gezeichnet.
+        */
+
+        blinkTimer++;
 
         if (blinkTimer >= 30)
         {
@@ -1511,31 +1355,34 @@ static void runTitleSequence(void)
 
 
     /*
-        Small confirmation flash.
+        Prompt wieder sichtbar machen,
+        bevor ausgeblendet wird.
     */
 
-    drawPressStart(
-        1
-    );
+    drawPressStart(1);
 
     waitFrames(6);
 
 
     /*
-        Fade into game.
+        Fade to black.
     */
 
     fadeOut();
 
 
+    /*
+        Sicher komplett schwarz machen.
+    */
+
     clearScreen(
-        RGB5(
-            0,
-            0,
-            0
-        )
+        RGB5(0,0,0)
     );
 
+
+    /*
+        Blend-Hardware zurücksetzen.
+    */
 
     REG_BLDCNT = 0;
     REG_BLDY = 0;
@@ -1549,9 +1396,10 @@ static void runTitleSequence(void)
 void introRun(void)
 {
     /*
-        Mode 3 bitmap mode is used only for intro/title.
+        Intro verwendet Mode 3.
 
-        Game itself switches back to Mode 0 afterwards.
+        Das eigentliche Spiel stellt danach
+        wieder auf Mode 0 um.
     */
 
     SetMode(
@@ -1560,53 +1408,53 @@ void introRun(void)
     );
 
 
+    /*
+        Clean hardware state.
+    */
+
     REG_BLDCNT = 0;
     REG_BLDY = 0;
 
 
     /*
-        Make sure first visible frame is black.
+        Boot starts black.
     */
 
     clearScreen(
-        RGB5(
-            0,
-            0,
-            0
-        )
+        RGB5(0,0,0)
     );
-
 
     waitFrames(8);
 
 
     /*
-        BAYA PRESENTS
+        Developer intro.
     */
 
     runBayaSequence();
 
 
     /*
-        PIXEL TOWN title screen
+        Pixel Town title screen.
     */
 
     runTitleSequence();
 
 
     /*
-        Leave display clean for main.c.
+        Hinterlasse einen sauberen schwarzen
+        Bildschirm für main.c.
+
+        main.c schaltet anschließend wieder
+        auf MODE_0 und initialisiert Tiles,
+        Maps und Sprites neu.
     */
 
     REG_BLDCNT = 0;
     REG_BLDY = 0;
 
     clearScreen(
-        RGB5(
-            0,
-            0,
-            0
-        )
+        RGB5(0,0,0)
     );
 
     VBlankIntrWait();

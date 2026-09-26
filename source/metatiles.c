@@ -6,40 +6,55 @@ Metatile metatiles[META_COUNT];
 static void setMeta(
     int id,
 
-    int b0,int b1,
-    int b2,int b3,
+    int b0,
+    int b1,
+    int b2,
+    int b3,
 
-    int t0,int t1,
-    int t2,int t3,
+    int t0,
+    int t1,
+    int t2,
+    int t3,
 
     int collision,
     int behavior
 )
 {
-    Metatile *m=&metatiles[id];
+    Metatile *m =
+        &metatiles[id];
 
-    m->bottom[0]=b0;
-    m->bottom[1]=b1;
-    m->bottom[2]=b2;
-    m->bottom[3]=b3;
+    m->bottom[0] = b0;
+    m->bottom[1] = b1;
+    m->bottom[2] = b2;
+    m->bottom[3] = b3;
 
-    m->top[0]=t0;
-    m->top[1]=t1;
-    m->top[2]=t2;
-    m->top[3]=t3;
+    m->top[0] = t0;
+    m->top[1] = t1;
+    m->top[2] = t2;
+    m->top[3] = t3;
 
-    m->collision=collision;
-    m->behavior=behavior;
-    m->elevation=0;
+    m->collision =
+        collision;
+
+    m->behavior =
+        behavior;
+
+    m->elevation = 0;
 }
 
 void metatilesInit(void)
 {
+    /* =====================================================
+       GROUND
+       ===================================================== */
+
     setMeta(
         META_GRASS,
 
-        TILE_GRASS,TILE_GRASS,
-        TILE_GRASS,TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
 
         0,0,0,0,
 
@@ -50,55 +65,54 @@ void metatilesInit(void)
     setMeta(
         META_GRASS_DETAIL,
 
-        TILE_GRASS,TILE_GRASS_DETAIL,
-        TILE_GRASS,TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS_DETAIL,
+        TILE_GRASS,
+        TILE_GRASS,
 
         0,0,0,0,
 
         0,
         BEHAVIOR_NORMAL
     );
-
-    /*
-       FLOWERS ARE BOTTOM LAYER.
-
-       They cannot draw over the player.
-    */
 
     setMeta(
         META_FLOWER,
 
-        TILE_GRASS,TILE_GRASS,
-        TILE_FLOWER,TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_FLOWER,
+        TILE_GRASS,
 
         0,0,0,0,
 
         0,
         BEHAVIOR_NORMAL
     );
+
+    /* =====================================================
+       PATH
+       ===================================================== */
 
     setMeta(
         META_PATH,
 
-        TILE_PATH,TILE_PATH,
-        TILE_PATH,TILE_PATH,
+        TILE_PATH,
+        TILE_PATH,
+        TILE_PATH,
+        TILE_PATH,
 
         0,0,0,0,
 
         0,
         BEHAVIOR_NORMAL
     );
-
-    /*
-       32px vertical path with grass edges.
-    */
 
     setMeta(
         META_PATH_V,
 
         TILE_PATH_EDGE_L,
         TILE_PATH_EDGE_R,
-
         TILE_PATH_EDGE_L,
         TILE_PATH_EDGE_R,
 
@@ -113,7 +127,6 @@ void metatilesInit(void)
 
         TILE_PATH_EDGE_T,
         TILE_PATH_EDGE_T,
-
         TILE_PATH,
         TILE_PATH,
 
@@ -128,7 +141,6 @@ void metatilesInit(void)
 
         TILE_PATH,
         TILE_PATH,
-
         TILE_PATH_EDGE_B,
         TILE_PATH_EDGE_B,
 
@@ -138,33 +150,70 @@ void metatilesInit(void)
         BEHAVIOR_NORMAL
     );
 
+    /* =====================================================
+       HOUSE ROOF
+       ===================================================== */
+
+    setMeta(
+        META_ROOF_LEFT,
+
+        TILE_ROOF_SLOPE_L,
+        TILE_ROOF_TOP,
+
+        TILE_ROOF_RED_DARK,
+        TILE_ROOF_RED,
+
+        0,0,0,0,
+
+        1,
+        BEHAVIOR_NORMAL
+    );
+
+    setMeta(
+        META_ROOF_MIDDLE,
+
+        TILE_ROOF_TOP,
+        TILE_ROOF_TOP,
+
+        TILE_ROOF_RED_LIGHT,
+        TILE_ROOF_RED,
+
+        0,0,0,0,
+
+        1,
+        BEHAVIOR_NORMAL
+    );
+
+    setMeta(
+        META_ROOF_RIGHT,
+
+        TILE_ROOF_TOP,
+        TILE_ROOF_SLOPE_R,
+
+        TILE_ROOF_RED,
+        TILE_ROOF_RED_DARK,
+
+        0,0,0,0,
+
+        1,
+        BEHAVIOR_NORMAL
+    );
+
     /*
-       ROOF
+        Projecting roof edge.
+
+        Still solid because the building occupies
+        this world position.
     */
 
     setMeta(
-        META_ROOF_L,
+        META_ROOF_EAVE_LEFT,
 
-        TILE_ROOF_TL,
-        TILE_ROOF_TM,
+        TILE_ROOF_EAVE_L,
+        TILE_ROOF_EAVE_M,
 
-        TILE_ROOF_ML,
-        TILE_ROOF_MM,
-
-        0,0,0,0,
-
-        1,
-        BEHAVIOR_NORMAL
-    );
-
-    setMeta(
-        META_ROOF_M,
-
-        TILE_ROOF_TM,
-        TILE_ROOF_TM,
-
-        TILE_ROOF_MM,
-        TILE_ROOF_MM,
+        TILE_WALL,
+        TILE_WALL,
 
         0,0,0,0,
 
@@ -173,13 +222,13 @@ void metatilesInit(void)
     );
 
     setMeta(
-        META_ROOF_R,
+        META_ROOF_EAVE_MIDDLE,
 
-        TILE_ROOF_TM,
-        TILE_ROOF_TR,
+        TILE_ROOF_EAVE_M,
+        TILE_ROOF_EAVE_M,
 
-        TILE_ROOF_MM,
-        TILE_ROOF_MR,
+        TILE_WALL,
+        TILE_WALL,
 
         0,0,0,0,
 
@@ -187,31 +236,33 @@ void metatilesInit(void)
         BEHAVIOR_NORMAL
     );
 
-    /*
-       WALL
-    */
+    setMeta(
+        META_ROOF_EAVE_RIGHT,
+
+        TILE_ROOF_EAVE_M,
+        TILE_ROOF_EAVE_R,
+
+        TILE_WALL,
+        TILE_WALL,
+
+        0,0,0,0,
+
+        1,
+        BEHAVIOR_NORMAL
+    );
+
+    /* =====================================================
+       FACADE
+       ===================================================== */
 
     setMeta(
         META_WALL,
 
-        TILE_WALL,TILE_WALL,
-        TILE_WALL_BASE,TILE_WALL_BASE,
+        TILE_WALL,
+        TILE_WALL,
 
-        0,0,0,0,
-
-        1,
-        BEHAVIOR_NORMAL
-    );
-
-    /*
-       Window is 32 px high.
-    */
-
-    setMeta(
-        META_WINDOW_TOP,
-
-        TILE_WALL,TILE_WALL,
-        TILE_WINDOW_T,TILE_WINDOW_T,
+        TILE_WALL_BASE,
+        TILE_WALL_BASE,
 
         0,0,0,0,
 
@@ -220,10 +271,13 @@ void metatilesInit(void)
     );
 
     setMeta(
-        META_WINDOW_BOTTOM,
+        META_WALL_DETAIL,
 
-        TILE_WINDOW_B,TILE_WINDOW_B,
-        TILE_WALL_BASE,TILE_WALL_BASE,
+        TILE_WALL_DETAIL,
+        TILE_WALL_DETAIL,
+
+        TILE_WALL_BASE,
+        TILE_WALL_BASE,
 
         0,0,0,0,
 
@@ -231,16 +285,33 @@ void metatilesInit(void)
         BEHAVIOR_NORMAL
     );
 
-    /*
-       Door top:
-       solid because it is visually wall.
-    */
+    setMeta(
+        META_WINDOW,
+
+        TILE_WINDOW_TL,
+        TILE_WINDOW_TR,
+
+        TILE_WINDOW_BL,
+        TILE_WINDOW_BR,
+
+        0,0,0,0,
+
+        1,
+        BEHAVIOR_NORMAL
+    );
+
+    /* =====================================================
+       DOOR
+       ===================================================== */
 
     setMeta(
         META_DOOR_TOP,
 
-        TILE_DOOR_T,TILE_DOOR_T,
-        TILE_DOOR_T,TILE_DOOR_T,
+        TILE_DOOR_TL,
+        TILE_DOOR_TR,
+
+        TILE_DOOR_BL,
+        TILE_DOOR_BR,
 
         0,0,0,0,
 
@@ -249,17 +320,20 @@ void metatilesInit(void)
     );
 
     /*
-       Door bottom:
-       walkable entrance.
+        Bottom entrance tile.
 
-       Still BG0, so player draws over it.
+        Grass/path underneath and walkable.
+        This becomes the actual entrance position.
     */
 
     setMeta(
         META_DOOR_BOTTOM,
 
-        TILE_DOOR_B,TILE_DOOR_B,
-        TILE_DOOR_B,TILE_DOOR_B,
+        TILE_PATH_EDGE_L,
+        TILE_PATH_EDGE_R,
+
+        TILE_PATH_EDGE_L,
+        TILE_PATH_EDGE_R,
 
         0,0,0,0,
 
@@ -267,18 +341,46 @@ void metatilesInit(void)
         BEHAVIOR_DOOR
     );
 
-    /*
-       ONE 32x32 TREE.
+    setMeta(
+        META_SIGN,
 
-       Four different metatiles.
-       No duplication.
-    */
+        TILE_SIGN,
+        TILE_SIGN,
+        TILE_WALL_BASE,
+        TILE_WALL_BASE,
+
+        0,0,0,0,
+
+        1,
+        BEHAVIOR_NORMAL
+    );
+
+    setMeta(
+        META_FLOWER_BOX,
+
+        TILE_FLOWER_BOX,
+        TILE_FLOWER_BOX,
+
+        TILE_WALL_BASE,
+        TILE_WALL_BASE,
+
+        0,0,0,0,
+
+        1,
+        BEHAVIOR_NORMAL
+    );
+
+    /* =====================================================
+       TREE
+       ===================================================== */
 
     setMeta(
         META_TREE_TL,
 
-        TILE_GRASS,TILE_GRASS,
-        TILE_GRASS,TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
 
         TILE_TREE_00,
         TILE_TREE_01,
@@ -292,8 +394,10 @@ void metatilesInit(void)
     setMeta(
         META_TREE_TR,
 
-        TILE_GRASS,TILE_GRASS,
-        TILE_GRASS,TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
 
         TILE_TREE_02,
         TILE_TREE_03,
@@ -307,8 +411,10 @@ void metatilesInit(void)
     setMeta(
         META_TREE_BL,
 
-        TILE_GRASS,TILE_GRASS,
-        TILE_GRASS,TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
 
         TILE_TREE_20,
         TILE_TREE_21,
@@ -322,8 +428,10 @@ void metatilesInit(void)
     setMeta(
         META_TREE_BR,
 
-        TILE_GRASS,TILE_GRASS,
-        TILE_GRASS,TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
+        TILE_GRASS,
 
         TILE_TREE_22,
         TILE_TREE_23,
@@ -334,15 +442,18 @@ void metatilesInit(void)
         BEHAVIOR_NORMAL
     );
 
-    /*
-       Bush is BG0.
-    */
+    /* =====================================================
+       BUSH
+       ===================================================== */
 
     setMeta(
         META_BUSH,
 
-        TILE_GRASS,TILE_GRASS,
-        TILE_BUSH,TILE_BUSH,
+        TILE_GRASS,
+        TILE_GRASS,
+
+        TILE_BUSH,
+        TILE_BUSH,
 
         0,0,0,0,
 
@@ -350,11 +461,17 @@ void metatilesInit(void)
         BEHAVIOR_NORMAL
     );
 
+    /* =====================================================
+       WATER
+       ===================================================== */
+
     setMeta(
         META_WATER,
 
-        TILE_WATER,TILE_WATER,
-        TILE_WATER,TILE_WATER,
+        TILE_WATER,
+        TILE_WATER,
+        TILE_WATER,
+        TILE_WATER,
 
         0,0,0,0,
 

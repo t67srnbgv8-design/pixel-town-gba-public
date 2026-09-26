@@ -1,6 +1,7 @@
 #include <gba.h>
 
 #include "intro.h"
+#include "character_select.h"
 #include "tileset.h"
 #include "metatiles.h"
 #include "world.h"
@@ -30,19 +31,20 @@ int main(void)
     irqEnable(IRQ_VBLANK);
 
     /*
-        Professional boot/title sequence.
-
-        BAYA PRESENTS
-             ->
-        PIXEL TOWN
-             ->
-        PRESS START
+        Developer intro + title.
     */
 
     introRun();
 
     /*
-        Return to normal tiled game engine.
+        NEW:
+        Character creation before entering town.
+    */
+
+    characterSelectRun();
+
+    /*
+        Enter game.
     */
 
     SetMode(
@@ -73,31 +75,31 @@ int main(void)
     REG_BG1HOFS = 0;
     REG_BG1VOFS = 0;
 
-    /*
-        Important after bitmap intro:
-        initialize all tiled graphics again.
-    */
-
     tilesetInit();
+
     metatilesInit();
 
     worldInit();
+
     worldDraw();
 
     playerInit();
 
     while (1)
     {
+        int cameraX;
+        int cameraY;
+
         VBlankIntrWait();
 
         playerUpdate();
 
-        int cameraX =
+        cameraX =
             player.x +
             8 -
             SCREEN_W / 2;
 
-        int cameraY =
+        cameraY =
             player.y +
             16 -
             SCREEN_H / 2;
@@ -116,11 +118,17 @@ int main(void)
                 WORLD_H - SCREEN_H
             );
 
-        REG_BG0HOFS = cameraX;
-        REG_BG0VOFS = cameraY;
+        REG_BG0HOFS =
+            cameraX;
 
-        REG_BG1HOFS = cameraX;
-        REG_BG1VOFS = cameraY;
+        REG_BG0VOFS =
+            cameraY;
+
+        REG_BG1HOFS =
+            cameraX;
+
+        REG_BG1VOFS =
+            cameraY;
 
         playerDraw(
             cameraX,

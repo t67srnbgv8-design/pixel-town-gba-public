@@ -11,6 +11,7 @@ typedef struct
     u8 collision;
     u8 behavior;
     u8 elevation;
+
 } Metatile;
 
 enum
@@ -24,16 +25,32 @@ enum
     META_PATH_TOP,
     META_PATH_BOTTOM,
 
-    META_ROOF_L,
-    META_ROOF_M,
-    META_ROOF_R,
+    /*
+        HOUSE
+    */
+
+    META_ROOF_LEFT,
+    META_ROOF_MIDDLE,
+    META_ROOF_RIGHT,
+
+    META_ROOF_EAVE_LEFT,
+    META_ROOF_EAVE_MIDDLE,
+    META_ROOF_EAVE_RIGHT,
 
     META_WALL,
-    META_WINDOW_TOP,
-    META_WINDOW_BOTTOM,
+    META_WALL_DETAIL,
+
+    META_WINDOW,
 
     META_DOOR_TOP,
     META_DOOR_BOTTOM,
+
+    META_SIGN,
+    META_FLOWER_BOX,
+
+    /*
+        NATURE
+    */
 
     META_TREE_TL,
     META_TREE_TR,

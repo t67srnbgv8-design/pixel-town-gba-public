@@ -1,301 +1,694 @@
 #include <gba.h>
+
 #include "player.h"
 #include "world.h"
+#include "character_select.h"
 
 Player player;
 
-static void objPixel(
-    u16 *base,
+enum
+{
+    DIR_DOWN = 0,
+    DIR_UP,
+    DIR_LEFT,
+    DIR_RIGHT
+};
+
+static void spritePixel(
+    u16 *gfx,
     int x,
     int y,
-    u8 colour
+    int color
 )
 {
-    if (x < 0 || x >= 16 || y < 0 || y >= 32)
+    int p;
+    int word;
+    int shift;
+
+    if (
+        x < 0 ||
+        x >= 16 ||
+        y < 0 ||
+        y >= 32
+    )
         return;
 
-    int tileX = x >> 3;
-    int tileY = y >> 3;
+    p =
+        y * 16 + x;
 
-    int localX = x & 7;
-    int localY = y & 7;
+    word =
+        p >> 2;
 
-    int tile = tileY * 2 + tileX;
+    shift =
+        (p & 3) * 4;
 
-    int p = localY * 8 + localX;
-    int word = p >> 2;
-    int shift = (p & 3) * 4;
+    gfx[word] &=
+        ~(0xF << shift);
 
-    u16 *ptr = &base[tile * 16];
-
-    ptr[word] &= ~(0xF << shift);
-    ptr[word] |= (colour & 0xF) << shift;
+    gfx[word] |=
+        (color & 15) << shift;
 }
 
-static void clearFrame(u16 *base)
+static void spriteRect(
+    u16 *gfx,
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    int color
+)
 {
-    for (int i = 0; i < 128; i++)
-        base[i] = 0;
+    int x;
+    int y;
+
+    for (y = y1; y <= y2; y++)
+    {
+        for (x = x1; x <= x2; x++)
+        {
+            spritePixel(
+                gfx,
+                x,
+                y,
+                color
+            );
+        }
+    }
 }
 
-static void makeFrame(
-    u16 *base,
+static void clearSprite(
+    u16 *gfx
+)
+{
+    int i;
+
+    /*
+        16 x 32 @ 4bpp =
+        256 bytes =
+        128 u16
+    */
+
+    for (i = 0; i < 128; i++)
+        gfx[i] = 0;
+}
+
+static int getHairColor(void)
+{
+    switch (
+        characterConfig.hairColor
+    )
+    {
+        case 0:
+            return 2;
+
+        case 1:
+            return 3;
+
+        case 2:
+            return 4;
+
+        default:
+            return 5;
+    }
+}
+
+static int getShirtColor(void)
+{
+    switch (
+        characterConfig.clothes
+    )
+    {
+        case 0:
+            return 6;
+
+        case 1:
+            return 7;
+
+        case 2:
+            return 8;
+
+        default:
+            return 9;
+    }
+}
+
+static void makePlayerFrame(
+    u16 *gfx,
     int direction,
     int frame
 )
 {
-    clearFrame(base);
+    int hair =
+        getHairColor();
 
-    const int outline = 1;
-    const int hair    = 2;
-    const int skin    = 3;
-    const int shirt   = 4;
-    const int pants   = 5;
-    const int shoes   = 6;
-    const int light   = 7;
-    const int shadow  = 8;
+    int shirt =
+        getShirtColor();
 
-    /* ground shadow */
-    for (int x = 4; x <= 11; x++)
-        objPixel(base,x,29,shadow);
+    int legOffset = 0;
 
-    /* head */
-    for (int y = 7; y <= 12; y++)
-        for (int x = 5; x <= 10; x++)
-            objPixel(base,x,y,skin);
+    clearSprite(
+        gfx
+    );
 
-    /* hair */
-    for (int x = 5; x <= 10; x++) {
-        objPixel(base,x,6,hair);
-        objPixel(base,x,7,hair);
-    }
-
-    objPixel(base,4,8,hair);
-    objPixel(base,11,8,hair);
-
-    /* facing */
-    if (direction == DIR_DOWN) {
-        objPixel(base,6,10,outline);
-        objPixel(base,9,10,outline);
-    }
-    else if (direction == DIR_UP) {
-        for (int x = 5; x <= 10; x++)
-            objPixel(base,x,10,hair);
-    }
-    else if (direction == DIR_LEFT) {
-        objPixel(base,5,10,outline);
-    }
-    else {
-        objPixel(base,10,10,outline);
-    }
-
-    /* body */
-    for (int y = 14; y <= 20; y++)
-        for (int x = 5; x <= 10; x++)
-            objPixel(base,x,y,shirt);
-
-    objPixel(base,6,15,light);
-    objPixel(base,6,16,light);
-
-    /* arms */
-    int leftOffset  = frame ? 1 : 0;
-    int rightOffset = frame ? 0 : 1;
-
-    for (int y = 15; y <= 20; y++) {
-        objPixel(base,3,y + leftOffset,skin);
-        objPixel(base,4,y + leftOffset,skin);
-
-        objPixel(base,11,y + rightOffset,skin);
-        objPixel(base,12,y + rightOffset,skin);
-    }
-
-    /* trousers */
-    for (int y = 21; y <= 23; y++)
-        for (int x = 5; x <= 10; x++)
-            objPixel(base,x,y,pants);
-
-    if (frame == 0) {
-        for (int y = 24; y <= 27; y++) {
-            objPixel(base,5,y,pants);
-            objPixel(base,6,y,pants);
-
-            objPixel(base,9,y,pants);
-            objPixel(base,10,y,pants);
-        }
-
-        for (int x = 4; x <= 6; x++)
-            objPixel(base,x,28,shoes);
-
-        for (int x = 9; x <= 11; x++)
-            objPixel(base,x,28,shoes);
-    }
-    else {
-        for (int y = 24; y <= 27; y++) {
-            objPixel(base,4,y,pants);
-            objPixel(base,5,y,pants);
-
-            objPixel(base,10,y,pants);
-            objPixel(base,11,y,pants);
-        }
-
-        for (int x = 3; x <= 5; x++)
-            objPixel(base,x,28,shoes);
-
-        for (int x = 10; x <= 12; x++)
-            objPixel(base,x,28,shoes);
-    }
-}
-
-static int blocked(int x, int y)
-{
     /*
-       Only the feet collide with the map.
-       This allows the body/head to overlap foreground.
+        Walk animation.
     */
 
-    int left   = x + 4;
-    int right  = x + 11;
-    int top    = y + 24;
-    int bottom = y + 28;
+    if (frame == 1)
+        legOffset = 1;
 
-    if (worldIsBlocked(left,top))
-        return 1;
+    /*
+        Shadow
+    */
 
-    if (worldIsBlocked(right,top))
-        return 1;
+    spriteRect(
+        gfx,
+        4,
+        29,
+        11,
+        30,
+        1
+    );
 
-    if (worldIsBlocked(left,bottom))
-        return 1;
+    /*
+        Legs
+    */
 
-    if (worldIsBlocked(right,bottom))
-        return 1;
+    spriteRect(
+        gfx,
+        5 - legOffset,
+        22,
+        7 - legOffset,
+        28,
+        10
+    );
 
-    return 0;
+    spriteRect(
+        gfx,
+        8 + legOffset,
+        22,
+        10 + legOffset,
+        28,
+        10
+    );
+
+    /*
+        Shoes
+    */
+
+    spriteRect(
+        gfx,
+        4 - legOffset,
+        28,
+        7 - legOffset,
+        30,
+        1
+    );
+
+    spriteRect(
+        gfx,
+        8 + legOffset,
+        28,
+        11 + legOffset,
+        30,
+        1
+    );
+
+    /*
+        Torso.
+    */
+
+    if (
+        characterConfig.gender == 0
+    )
+    {
+        spriteRect(
+            gfx,
+            4,
+            14,
+            11,
+            23,
+            shirt
+        );
+
+        spriteRect(
+            gfx,
+            3,
+            15,
+            4,
+            22,
+            11
+        );
+
+        spriteRect(
+            gfx,
+            11,
+            15,
+            12,
+            22,
+            11
+        );
+    }
+    else
+    {
+        spriteRect(
+            gfx,
+            5,
+            14,
+            10,
+            23,
+            shirt
+        );
+
+        spriteRect(
+            gfx,
+            3,
+            16,
+            4,
+            22,
+            11
+        );
+
+        spriteRect(
+            gfx,
+            11,
+            16,
+            12,
+            22,
+            11
+        );
+    }
+
+    /*
+        Neck
+    */
+
+    spriteRect(
+        gfx,
+        7,
+        12,
+        8,
+        15,
+        11
+    );
+
+    /*
+        Head
+    */
+
+    spriteRect(
+        gfx,
+        4,
+        5,
+        11,
+        13,
+        11
+    );
+
+    /*
+        ears
+    */
+
+    spriteRect(
+        gfx,
+        3,
+        8,
+        4,
+        11,
+        11
+    );
+
+    spriteRect(
+        gfx,
+        11,
+        8,
+        12,
+        11,
+        11
+    );
+
+    /*
+        Hair.
+    */
+
+    spriteRect(
+        gfx,
+        4,
+        3,
+        11,
+        7,
+        hair
+    );
+
+    spriteRect(
+        gfx,
+        3,
+        5,
+        5,
+        9,
+        hair
+    );
+
+    spriteRect(
+        gfx,
+        10,
+        5,
+        12,
+        8,
+        hair
+    );
+
+    /*
+        Long hair.
+    */
+
+    if (
+        characterConfig.hairLength == 1
+    )
+    {
+        spriteRect(
+            gfx,
+            3,
+            8,
+            4,
+            15,
+            hair
+        );
+
+        spriteRect(
+            gfx,
+            11,
+            8,
+            12,
+            15,
+            hair
+        );
+    }
+
+    /*
+        Directional face details.
+    */
+
+    if (direction == DIR_DOWN)
+    {
+        spritePixel(
+            gfx,
+            6,
+            9,
+            1
+        );
+
+        spritePixel(
+            gfx,
+            9,
+            9,
+            1
+        );
+
+        spritePixel(
+            gfx,
+            8,
+            12,
+            3
+        );
+    }
+    else if (
+        direction == DIR_LEFT
+    )
+    {
+        spritePixel(
+            gfx,
+            5,
+            9,
+            1
+        );
+
+        spritePixel(
+            gfx,
+            4,
+            11,
+            3
+        );
+    }
+    else if (
+        direction == DIR_RIGHT
+    )
+    {
+        spritePixel(
+            gfx,
+            10,
+            9,
+            1
+        );
+
+        spritePixel(
+            gfx,
+            11,
+            11,
+            3
+        );
+    }
+
+    /*
+        Shirt highlight.
+    */
+
+    spriteRect(
+        gfx,
+        5,
+        15,
+        6,
+        18,
+        12
+    );
 }
 
-static int clampValue(
-    int value,
-    int minimum,
-    int maximum
+static int canMoveTo(
+    int x,
+    int y
 )
 {
-    if (value < minimum)
-        return minimum;
+    /*
+        Feet-only collision.
+        Allows the head/body to overlap visual scenery.
+    */
 
-    if (value > maximum)
-        return maximum;
+    if (
+        worldIsBlocked(
+            x + 4,
+            y + 26
+        )
+    )
+        return 0;
 
-    return value;
+    if (
+        worldIsBlocked(
+            x + 11,
+            y + 26
+        )
+    )
+        return 0;
+
+    if (
+        worldIsBlocked(
+            x + 4,
+            y + 29
+        )
+    )
+        return 0;
+
+    if (
+        worldIsBlocked(
+            x + 11,
+            y + 29
+        )
+    )
+        return 0;
+
+    return 1;
 }
 
 void playerInit(void)
 {
+    int i;
+
     player.x = 244;
     player.y = 92;
 
-    player.direction = DIR_DOWN;
-    player.moving = 0;
+    player.direction =
+        DIR_DOWN;
+
     player.frame = 0;
-    player.timer = 0;
+
+    player.animationTimer = 0;
 
     /*
-       Sprite palette
+        OBJ palette.
     */
-    SPRITE_PALETTE[0] = RGB5(31,0,31);
-    SPRITE_PALETTE[1] = RGB5(3,3,4);
-    SPRITE_PALETTE[2] = RGB5(9,5,3);
-    SPRITE_PALETTE[3] = RGB5(30,22,16);
-    SPRITE_PALETTE[4] = RGB5(5,12,28);
-    SPRITE_PALETTE[5] = RGB5(5,7,14);
-    SPRITE_PALETTE[6] = RGB5(3,3,4);
-    SPRITE_PALETTE[7] = RGB5(18,22,31);
-    SPRITE_PALETTE[8] = RGB5(4,12,4);
 
-    makeFrame(
-        (u16 *)SPRITE_GFX,
-        player.direction,
-        0
-    );
+    SPRITE_PALETTE[0] =
+        RGB5(0,0,0);
 
-    for (int i = 1; i < 128; i++) {
-        OAM[i].attr0 = ATTR0_DISABLED;
+    SPRITE_PALETTE[1] =
+        RGB5(3,3,4);
+
+    /* hair */
+    SPRITE_PALETTE[2] =
+        RGB5(2,2,3);
+
+    SPRITE_PALETTE[3] =
+        RGB5(12,6,3);
+
+    SPRITE_PALETTE[4] =
+        RGB5(28,22,10);
+
+    SPRITE_PALETTE[5] =
+        RGB5(21,7,3);
+
+    /* clothes */
+    SPRITE_PALETTE[6] =
+        RGB5(5,14,29);
+
+    SPRITE_PALETTE[7] =
+        RGB5(26,5,5);
+
+    SPRITE_PALETTE[8] =
+        RGB5(6,23,9);
+
+    SPRITE_PALETTE[9] =
+        RGB5(18,7,25);
+
+    /* trousers */
+    SPRITE_PALETTE[10] =
+        RGB5(8,9,12);
+
+    /* skin */
+    SPRITE_PALETTE[11] =
+        RGB5(27,18,13);
+
+    /* highlight */
+    SPRITE_PALETTE[12] =
+        RGB5(31,31,31);
+
+    for (i = 0; i < 128; i++)
+        ((u16 *)SPRITE_GFX)[i] = 0;
+
+    /*
+        Hide all OAM objects first.
+    */
+
+    for (i = 0; i < 128; i++)
+    {
+        OAM[i].attr0 =
+            ATTR0_HIDE;
+
         OAM[i].attr1 = 0;
         OAM[i].attr2 = 0;
     }
+
+    makePlayerFrame(
+        (u16 *)SPRITE_GFX,
+        player.direction,
+        player.frame
+    );
 }
 
 void playerUpdate(void)
 {
+    int newX =
+        player.x;
+
+    int newY =
+        player.y;
+
+    int moving = 0;
+
     scanKeys();
 
-    u16 keys = keysHeld();
-
-    int nx = player.x;
-    int ny = player.y;
-
-    player.moving = 0;
-
-    if (keys & KEY_LEFT) {
-        nx--;
-        player.direction = DIR_LEFT;
-        player.moving = 1;
-    }
-    else if (keys & KEY_RIGHT) {
-        nx++;
-        player.direction = DIR_RIGHT;
-        player.moving = 1;
-    }
-    else if (keys & KEY_UP) {
-        ny--;
-        player.direction = DIR_UP;
-        player.moving = 1;
-    }
-    else if (keys & KEY_DOWN) {
-        ny++;
-        player.direction = DIR_DOWN;
-        player.moving = 1;
-    }
-
-    nx = clampValue(
-        nx,
-        0,
-        WORLD_W - 16
-    );
-
-    ny = clampValue(
-        ny,
-        0,
-        WORLD_H - 32
-    );
+    u16 held =
+        keysHeld();
 
     /*
-       X and Y checked separately so movement doesn't
-       get stuck as easily against corners.
+        No diagonal movement.
     */
 
-    if (!blocked(nx,player.y))
-        player.x = nx;
+    if (held & KEY_UP)
+    {
+        newY--;
 
-    if (!blocked(player.x,ny))
-        player.y = ny;
+        player.direction =
+            DIR_UP;
 
-    if (player.moving) {
-        player.timer++;
+        moving = 1;
+    }
+    else if (
+        held & KEY_DOWN
+    )
+    {
+        newY++;
 
-        if (player.timer >= 10) {
-            player.timer = 0;
+        player.direction =
+            DIR_DOWN;
+
+        moving = 1;
+    }
+    else if (
+        held & KEY_LEFT
+    )
+    {
+        newX--;
+
+        player.direction =
+            DIR_LEFT;
+
+        moving = 1;
+    }
+    else if (
+        held & KEY_RIGHT
+    )
+    {
+        newX++;
+
+        player.direction =
+            DIR_RIGHT;
+
+        moving = 1;
+    }
+
+    if (
+        moving &&
+        canMoveTo(
+            newX,
+            newY
+        )
+    )
+    {
+        player.x =
+            newX;
+
+        player.y =
+            newY;
+
+        player.animationTimer++;
+
+        if (
+            player.animationTimer >= 8
+        )
+        {
+            player.animationTimer = 0;
+
             player.frame ^= 1;
         }
     }
-    else {
-        player.timer = 0;
+    else
+    {
+        player.animationTimer = 0;
         player.frame = 0;
     }
 
-    makeFrame(
+    makePlayerFrame(
         (u16 *)SPRITE_GFX,
         player.direction,
-        player.moving ? player.frame : 0
+        player.frame
     );
 }
 
@@ -305,28 +698,39 @@ void playerDraw(
 )
 {
     int screenX =
-        player.x - cameraX;
+        player.x -
+        cameraX;
 
     int screenY =
-        player.y - cameraY;
+        player.y -
+        cameraY;
 
     OAM[0].attr0 =
-        ATTR0_COLOR_16 |
-        ATTR0_TALL |
-        (screenY & 0xFF);
-
-    OAM[0].attr1 =
-        ATTR1_SIZE_32 |
-        (screenX & 0x1FF);
+        ATTR0_SQUARE |
+        ATTR0_4BPP |
+        (screenY & 255);
 
     /*
-       BG1 priority 0
-       Player priority 1
-       BG0 priority 2
-
-       Therefore:
-       foreground > player > ground
+        16 x 32 sprite uses wide shape.
     */
+
+    OAM[0].attr0 =
+        ATTR0_TALL |
+        ATTR0_4BPP |
+        (screenY & 255);
+
+    OAM[0].attr1 =
+        ATTR1_SIZE_1 |
+        (screenX & 511);
+
     OAM[0].attr2 =
+        0 |
         ATTR2_PRIORITY(1);
+
+    CpuFastSet(
+        OAM,
+        OAM_MEM,
+        COPY32 |
+        (sizeof(OAM) / 4)
+    );
 }

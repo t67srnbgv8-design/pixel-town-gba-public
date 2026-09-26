@@ -11,12 +11,7 @@ static void clearTile(int tile)
         gfx[tile * 16 + i] = 0;
 }
 
-static void px(
-    int tile,
-    int x,
-    int y,
-    int color
-)
+static void px(int tile, int x, int y, int c)
 {
     int p;
     int word;
@@ -30,7 +25,7 @@ static void px(
     shift = (p & 3) * 4;
 
     gfx[word] &= ~(0xF << shift);
-    gfx[word] |= (color & 15) << shift;
+    gfx[word] |= (c & 15) << shift;
 }
 
 static void rect(
@@ -39,34 +34,24 @@ static void rect(
     int y1,
     int x2,
     int y2,
-    int color
+    int c
 )
 {
     int x;
     int y;
 
     for (y = y1; y <= y2; y++)
-    {
         for (x = x1; x <= x2; x++)
-            px(tile, x, y, color);
-    }
+            px(tile, x, y, c);
 }
 
-static void fill(
-    int tile,
-    int color
-)
+static void fill(int tile, int c)
 {
-    rect(
-        tile,
-        0, 0,
-        7, 7,
-        color
-    );
+    rect(tile, 0, 0, 7, 7, c);
 }
 
 /* =========================================================
-   TREE
+   TREES
    ========================================================= */
 
 static void treeBlob(
@@ -92,12 +77,7 @@ static void treeBlob(
                 radius * radius
             )
             {
-                px(
-                    tile,
-                    x,
-                    y,
-                    11
-                );
+                px(tile, x, y, 11);
             }
         }
     }
@@ -187,14 +167,11 @@ static void makeTreeTile(
             break;
     }
 
-    treeHighlight(
-        tile,
-        type
-    );
+    treeHighlight(tile, type);
 }
 
 /* =========================================================
-   TILESET
+   INITIALISE TILESET
    ========================================================= */
 
 void tilesetInit(void)
@@ -216,36 +193,45 @@ void tilesetInit(void)
     BG_PALETTE[0] =
         RGB5(0,0,0);
 
+    /* grass */
     BG_PALETTE[1] =
         RGB5(13,25,11);
 
     BG_PALETTE[2] =
         RGB5(7,18,7);
 
+    /* ground/path */
     BG_PALETTE[3] =
-        RGB5(24,20,12);
+        RGB5(23,19,12);
 
     BG_PALETTE[4] =
-        RGB5(30,26,18);
+        RGB5(29,25,17);
 
+    /* warm house wall */
     BG_PALETTE[5] =
-        RGB5(29,25,18);
+        RGB5(28,24,16);
 
+    /* wall / wood shadow */
     BG_PALETTE[6] =
-        RGB5(20,16,11);
+        RGB5(18,14,10);
 
+    /* dark outline */
     BG_PALETTE[7] =
-        RGB5(7,6,6);
+        RGB5(6,6,6);
 
+    /* roof main */
     BG_PALETTE[8] =
-        RGB5(23,6,6);
+        RGB5(22,6,5);
 
+    /* roof highlight */
     BG_PALETTE[9] =
-        RGB5(31,13,9);
+        RGB5(30,12,8);
 
+    /* roof shadow */
     BG_PALETTE[10] =
-        RGB5(13,3,4);
+        RGB5(12,3,3);
 
+    /* trees */
     BG_PALETTE[11] =
         RGB5(7,20,7);
 
@@ -255,9 +241,11 @@ void tilesetInit(void)
     BG_PALETTE[13] =
         RGB5(3,11,5);
 
+    /* window blue */
     BG_PALETTE[14] =
         RGB5(8,20,29);
 
+    /* cream highlight */
     BG_PALETTE[15] =
         RGB5(31,30,22);
 
@@ -265,26 +253,16 @@ void tilesetInit(void)
        GRASS
        ===================================================== */
 
-    fill(
-        TILE_GRASS,
-        1
-    );
+    fill(TILE_GRASS, 1);
 
-    fill(
-        TILE_GRASS_DETAIL,
-        1
-    );
+    fill(TILE_GRASS_DETAIL, 1);
 
     px(TILE_GRASS_DETAIL,1,6,2);
     px(TILE_GRASS_DETAIL,2,5,2);
-
     px(TILE_GRASS_DETAIL,5,2,2);
     px(TILE_GRASS_DETAIL,6,3,2);
 
-    fill(
-        TILE_FLOWER,
-        1
-    );
+    fill(TILE_FLOWER, 1);
 
     px(TILE_FLOWER,3,2,15);
     px(TILE_FLOWER,2,3,15);
@@ -296,19 +274,13 @@ void tilesetInit(void)
        PATH
        ===================================================== */
 
-    fill(
-        TILE_PATH,
-        3
-    );
+    fill(TILE_PATH, 3);
 
     px(TILE_PATH,1,2,4);
     px(TILE_PATH,6,5,4);
     px(TILE_PATH,3,7,6);
 
-    fill(
-        TILE_PATH_EDGE_L,
-        1
-    );
+    fill(TILE_PATH_EDGE_L, 1);
 
     for (y = 0; y < 8; y++)
     {
@@ -317,10 +289,7 @@ void tilesetInit(void)
         px(TILE_PATH_EDGE_L,7,y,3);
     }
 
-    fill(
-        TILE_PATH_EDGE_R,
-        1
-    );
+    fill(TILE_PATH_EDGE_R, 1);
 
     for (y = 0; y < 8; y++)
     {
@@ -329,10 +298,7 @@ void tilesetInit(void)
         px(TILE_PATH_EDGE_R,2,y,2);
     }
 
-    fill(
-        TILE_PATH_EDGE_T,
-        1
-    );
+    fill(TILE_PATH_EDGE_T, 1);
 
     for (x = 0; x < 8; x++)
     {
@@ -341,10 +307,7 @@ void tilesetInit(void)
         px(TILE_PATH_EDGE_T,x,7,3);
     }
 
-    fill(
-        TILE_PATH_EDGE_B,
-        1
-    );
+    fill(TILE_PATH_EDGE_B, 1);
 
     for (x = 0; x < 8; x++)
     {
@@ -354,125 +317,147 @@ void tilesetInit(void)
     }
 
     /* =====================================================
-       HOUSE ROOF
+       HOUSE V2 - ROOF
 
-       Sloped upper pieces + tiled middle +
-       dark projecting eave.
+       Important change:
+       transparent corners instead of black pixels.
+       Palette index 0 is transparent on BG1-style graphics,
+       but these roof tiles are on BG0, so we deliberately
+       continue the roof shape cleanly instead of leaving
+       large black triangles.
        ===================================================== */
 
-    clearTile(
-        TILE_ROOF_SLOPE_L
-    );
+    /* LEFT ROOF EDGE */
+
+    fill(TILE_ROOF_SLOPE_L, 8);
 
     for (y = 0; y < 8; y++)
     {
-        int start =
-            7 - y;
+        int edge = 7 - y;
 
-        for (
-            x = start;
-            x < 8;
-            x++
-        )
+        for (x = 0; x < edge; x++)
         {
+            /*
+               Instead of black triangle, use the roof
+               highlight/shadow to create a bevel.
+            */
             px(
                 TILE_ROOF_SLOPE_L,
                 x,
                 y,
-                8
+                9
             );
         }
 
         px(
             TILE_ROOF_SLOPE_L,
-            start,
+            edge,
             y,
             10
         );
 
-        if (start + 1 < 8)
+        if (edge + 1 < 8)
         {
             px(
                 TILE_ROOF_SLOPE_L,
-                start + 1,
+                edge + 1,
                 y,
                 9
             );
         }
     }
 
-    fill(
-        TILE_ROOF_TOP,
-        8
-    );
+    /* CENTER TOP */
+
+    fill(TILE_ROOF_TOP, 8);
 
     for (x = 0; x < 8; x++)
-        px(TILE_ROOF_TOP,x,0,10);
+    {
+        px(
+            TILE_ROOF_TOP,
+            x,
+            0,
+            10
+        );
 
-    for (x = 1; x < 8; x += 4)
-        px(TILE_ROOF_TOP,x,2,9);
+        px(
+            TILE_ROOF_TOP,
+            x,
+            1,
+            9
+        );
+    }
 
-    for (x = 3; x < 8; x += 4)
-        px(TILE_ROOF_TOP,x,5,10);
+    px(TILE_ROOF_TOP,1,4,9);
+    px(TILE_ROOF_TOP,2,4,9);
 
-    clearTile(
-        TILE_ROOF_SLOPE_R
-    );
+    px(TILE_ROOF_TOP,5,6,10);
+    px(TILE_ROOF_TOP,6,6,10);
+
+    /* RIGHT ROOF EDGE */
+
+    fill(TILE_ROOF_SLOPE_R, 8);
 
     for (y = 0; y < 8; y++)
     {
-        int end = y;
+        int edge = y;
 
-        for (
-            x = 0;
-            x <= end;
-            x++
-        )
+        for (x = edge + 1; x < 8; x++)
         {
             px(
                 TILE_ROOF_SLOPE_R,
                 x,
                 y,
-                8
+                9
             );
         }
 
         px(
             TILE_ROOF_SLOPE_R,
-            end,
+            edge,
             y,
             10
         );
 
-        if (end - 1 >= 0)
+        if (edge - 1 >= 0)
         {
             px(
                 TILE_ROOF_SLOPE_R,
-                end - 1,
+                edge - 1,
                 y,
                 9
             );
         }
     }
 
-    fill(
-        TILE_ROOF_RED,
-        8
-    );
+    /* MAIN ROOF */
+
+    fill(TILE_ROOF_RED, 8);
+
+    /*
+       Horizontal shingle rows.
+       Much less random noise than v1.
+    */
 
     for (x = 0; x < 8; x++)
     {
-        if ((x & 3) == 0)
-            px(TILE_ROOF_RED,x,3,10);
-
-        if ((x & 3) == 2)
-            px(TILE_ROOF_RED,x,6,9);
+        px(
+            TILE_ROOF_RED,
+            x,
+            3,
+            10
+        );
     }
 
-    fill(
-        TILE_ROOF_RED_LIGHT,
-        8
-    );
+    px(TILE_ROOF_RED,1,2,9);
+    px(TILE_ROOF_RED,2,2,9);
+
+    px(TILE_ROOF_RED,5,6,9);
+    px(TILE_ROOF_RED,6,6,9);
+
+    /* LIGHT ROOF TILE */
+
+    fill(TILE_ROOF_RED_LIGHT, 8);
 
     for (x = 0; x < 8; x++)
     {
@@ -482,18 +467,31 @@ void tilesetInit(void)
             0,
             9
         );
+
+        px(
+            TILE_ROOF_RED_LIGHT,
+            x,
+            4,
+            10
+        );
     }
 
-    px(TILE_ROOF_RED_LIGHT,2,3,9);
-    px(TILE_ROOF_RED_LIGHT,6,5,10);
+    px(TILE_ROOF_RED_LIGHT,2,2,9);
+    px(TILE_ROOF_RED_LIGHT,6,6,9);
 
-    fill(
-        TILE_ROOF_RED_DARK,
-        8
-    );
+    /* DARK LOWER ROOF */
+
+    fill(TILE_ROOF_RED_DARK, 8);
 
     for (x = 0; x < 8; x++)
     {
+        px(
+            TILE_ROOF_RED_DARK,
+            x,
+            5,
+            10
+        );
+
         px(
             TILE_ROOF_RED_DARK,
             x,
@@ -505,109 +503,77 @@ void tilesetInit(void)
             TILE_ROOF_RED_DARK,
             x,
             7,
-            10
+            7
         );
     }
 
     px(TILE_ROOF_RED_DARK,1,2,9);
-    px(TILE_ROOF_RED_DARK,5,4,9);
+    px(TILE_ROOF_RED_DARK,5,3,9);
 
-    fill(
-        TILE_ROOF_EAVE_L,
-        8
-    );
+    /* =====================================================
+       ROOF EAVES
+
+       Strong dark underside creates depth.
+       ===================================================== */
+
+    fill(TILE_ROOF_EAVE_L, 8);
 
     for (x = 0; x < 8; x++)
     {
-        px(
-            TILE_ROOF_EAVE_L,
-            x,
-            4,
-            10
-        );
-
-        px(
-            TILE_ROOF_EAVE_L,
-            x,
-            5,
-            7
-        );
-
-        px(
-            TILE_ROOF_EAVE_L,
-            x,
-            6,
-            7
-        );
+        px(TILE_ROOF_EAVE_L,x,2,9);
+        px(TILE_ROOF_EAVE_L,x,4,10);
+        px(TILE_ROOF_EAVE_L,x,5,10);
+        px(TILE_ROOF_EAVE_L,x,6,7);
+        px(TILE_ROOF_EAVE_L,x,7,6);
     }
 
-    px(TILE_ROOF_EAVE_L,0,7,7);
-    px(TILE_ROOF_EAVE_L,1,7,7);
+    px(TILE_ROOF_EAVE_L,0,6,8);
+    px(TILE_ROOF_EAVE_L,1,6,8);
 
-    fill(
-        TILE_ROOF_EAVE_M,
-        8
-    );
+    fill(TILE_ROOF_EAVE_M, 8);
 
     for (x = 0; x < 8; x++)
     {
+        px(TILE_ROOF_EAVE_M,x,2,9);
         px(TILE_ROOF_EAVE_M,x,4,10);
-        px(TILE_ROOF_EAVE_M,x,5,7);
+        px(TILE_ROOF_EAVE_M,x,5,10);
         px(TILE_ROOF_EAVE_M,x,6,7);
         px(TILE_ROOF_EAVE_M,x,7,6);
     }
 
-    fill(
-        TILE_ROOF_EAVE_R,
-        8
-    );
+    fill(TILE_ROOF_EAVE_R, 8);
 
     for (x = 0; x < 8; x++)
     {
-        px(
-            TILE_ROOF_EAVE_R,
-            x,
-            4,
-            10
-        );
-
-        px(
-            TILE_ROOF_EAVE_R,
-            x,
-            5,
-            7
-        );
-
-        px(
-            TILE_ROOF_EAVE_R,
-            x,
-            6,
-            7
-        );
+        px(TILE_ROOF_EAVE_R,x,2,9);
+        px(TILE_ROOF_EAVE_R,x,4,10);
+        px(TILE_ROOF_EAVE_R,x,5,10);
+        px(TILE_ROOF_EAVE_R,x,6,7);
+        px(TILE_ROOF_EAVE_R,x,7,6);
     }
 
-    px(TILE_ROOF_EAVE_R,6,7,7);
-    px(TILE_ROOF_EAVE_R,7,7,7);
+    px(TILE_ROOF_EAVE_R,6,6,8);
+    px(TILE_ROOF_EAVE_R,7,6,8);
 
     /* =====================================================
-       WALL
+       HOUSE V2 - WALL
+
+       Less dotted/noisy than previous facade.
        ===================================================== */
 
-    fill(
-        TILE_WALL,
-        5
-    );
+    fill(TILE_WALL, 5);
 
-    for (y = 1; y < 8; y += 4)
-    {
-        px(TILE_WALL,1,y,15);
-        px(TILE_WALL,6,y,6);
-    }
+    /*
+       Tiny horizontal plaster accents.
+    */
 
-    fill(
-        TILE_WALL_DETAIL,
-        5
-    );
+    px(TILE_WALL,1,2,15);
+    px(TILE_WALL,2,2,15);
+
+    px(TILE_WALL,5,5,6);
+    px(TILE_WALL,6,5,6);
+
+    fill(TILE_WALL_DETAIL, 5);
 
     for (x = 0; x < 8; x++)
     {
@@ -619,32 +585,42 @@ void tilesetInit(void)
         );
     }
 
-    px(TILE_WALL_DETAIL,1,3,6);
-    px(TILE_WALL_DETAIL,6,5,6);
+    px(TILE_WALL_DETAIL,1,4,6);
+    px(TILE_WALL_DETAIL,2,4,6);
 
-    fill(
-        TILE_WALL_BASE,
-        5
-    );
+    /*
+       Foundation / base.
+    */
+
+    fill(TILE_WALL_BASE, 5);
 
     for (x = 0; x < 8; x++)
     {
+        px(TILE_WALL_BASE,x,4,4);
         px(TILE_WALL_BASE,x,5,6);
         px(TILE_WALL_BASE,x,6,6);
         px(TILE_WALL_BASE,x,7,7);
     }
 
     /* =====================================================
-       WINDOW
-
-       One window = full 16x16 metatile.
+       WINDOWS V2
        ===================================================== */
 
-    fill(
+    fill(TILE_WINDOW_TL, 5);
+
+    /*
+       Outer frame
+    */
+    rect(
         TILE_WINDOW_TL,
-        5
+        1,1,
+        7,7,
+        6
     );
 
+    /*
+       Dark inner frame
+    */
     rect(
         TILE_WINDOW_TL,
         2,2,
@@ -652,6 +628,9 @@ void tilesetInit(void)
         7
     );
 
+    /*
+       Glass
+    */
     rect(
         TILE_WINDOW_TL,
         3,3,
@@ -659,12 +638,20 @@ void tilesetInit(void)
         14
     );
 
+    /*
+       Reflection
+    */
     px(TILE_WINDOW_TL,3,3,15);
     px(TILE_WINDOW_TL,4,3,15);
+    px(TILE_WINDOW_TL,3,4,15);
 
-    fill(
+    fill(TILE_WINDOW_TR, 5);
+
+    rect(
         TILE_WINDOW_TR,
-        5
+        0,1,
+        6,7,
+        6
     );
 
     rect(
@@ -683,9 +670,17 @@ void tilesetInit(void)
 
     px(TILE_WINDOW_TR,1,3,15);
 
-    fill(
+    /*
+       Bottom left
+    */
+
+    fill(TILE_WINDOW_BL, 5);
+
+    rect(
         TILE_WINDOW_BL,
-        5
+        1,0,
+        7,5,
+        6
     );
 
     rect(
@@ -702,19 +697,28 @@ void tilesetInit(void)
         14
     );
 
+    /*
+       vertical divider
+    */
     for (y = 0; y <= 3; y++)
         px(TILE_WINDOW_BL,7,y,7);
 
-    rect(
-        TILE_WINDOW_BL,
-        1,5,
-        7,6,
-        6
-    );
+    /*
+       sill
+    */
+    for (x = 1; x < 8; x++)
+    {
+        px(TILE_WINDOW_BL,x,5,15);
+        px(TILE_WINDOW_BL,x,6,6);
+    }
 
-    fill(
+    fill(TILE_WINDOW_BR, 5);
+
+    rect(
         TILE_WINDOW_BR,
-        5
+        0,0,
+        6,5,
+        6
     );
 
     rect(
@@ -731,25 +735,33 @@ void tilesetInit(void)
         14
     );
 
-    rect(
-        TILE_WINDOW_BR,
-        0,5,
-        6,6,
-        6
-    );
+    for (x = 0; x <= 6; x++)
+    {
+        px(TILE_WINDOW_BR,x,5,15);
+        px(TILE_WINDOW_BR,x,6,6);
+    }
 
     /* =====================================================
-       DOOR
+       DOOR V2
 
-       Full 16x32 entrance when two metatiles
-       are stacked vertically.
+       Stronger frame + recessed door.
        ===================================================== */
 
-    fill(
+    fill(TILE_DOOR_TL, 5);
+
+    /*
+       trim
+    */
+    rect(
         TILE_DOOR_TL,
-        5
+        2,0,
+        7,7,
+        15
     );
 
+    /*
+       outline
+    */
     rect(
         TILE_DOOR_TL,
         3,1,
@@ -757,6 +769,9 @@ void tilesetInit(void)
         7
     );
 
+    /*
+       wood
+    */
     rect(
         TILE_DOOR_TL,
         4,2,
@@ -764,9 +779,13 @@ void tilesetInit(void)
         6
     );
 
-    fill(
+    fill(TILE_DOOR_TR, 5);
+
+    rect(
         TILE_DOOR_TR,
-        5
+        0,0,
+        5,7,
+        15
     );
 
     rect(
@@ -783,9 +802,17 @@ void tilesetInit(void)
         6
     );
 
-    fill(
+    /*
+       lower left
+    */
+
+    fill(TILE_DOOR_BL, 5);
+
+    rect(
         TILE_DOOR_BL,
-        5
+        2,0,
+        7,7,
+        15
     );
 
     rect(
@@ -802,9 +829,19 @@ void tilesetInit(void)
         6
     );
 
-    fill(
+    /*
+       subtle wood panel
+    */
+    px(TILE_DOOR_BL,5,2,4);
+    px(TILE_DOOR_BL,6,2,4);
+
+    fill(TILE_DOOR_BR, 5);
+
+    rect(
         TILE_DOOR_BR,
-        5
+        0,0,
+        5,7,
+        15
     );
 
     rect(
@@ -821,12 +858,19 @@ void tilesetInit(void)
         6
     );
 
+    /*
+       handle
+    */
     px(
         TILE_DOOR_BR,
         2,
         3,
         15
     );
+
+    /*
+       threshold
+    */
 
     for (x = 0; x < 8; x++)
     {
@@ -849,10 +893,12 @@ void tilesetInit(void)
        SIGN
        ===================================================== */
 
-    fill(
-        TILE_SIGN,
-        5
-    );
+    fill(TILE_SIGN, 5);
+
+    /*
+       small wooden wall plaque instead of
+       two strange squares.
+    */
 
     rect(
         TILE_SIGN,
@@ -865,7 +911,7 @@ void tilesetInit(void)
         TILE_SIGN,
         2,3,
         5,5,
-        15
+        4
     );
 
     px(TILE_SIGN,3,4,8);
@@ -875,21 +921,37 @@ void tilesetInit(void)
        FLOWER BOX
        ===================================================== */
 
-    fill(
-        TILE_FLOWER_BOX,
-        5
-    );
+    fill(TILE_FLOWER_BOX, 5);
+
+    /*
+       flower heads
+    */
+
+    px(TILE_FLOWER_BOX,1,3,15);
+    px(TILE_FLOWER_BOX,3,2,9);
+    px(TILE_FLOWER_BOX,5,3,15);
+
+    /*
+       leaves
+    */
+
+    px(TILE_FLOWER_BOX,2,4,11);
+    px(TILE_FLOWER_BOX,4,4,11);
+    px(TILE_FLOWER_BOX,6,4,11);
+
+    /*
+       wooden planter
+    */
 
     rect(
         TILE_FLOWER_BOX,
         0,5,
-        7,7,
+        7,6,
         6
     );
 
-    px(TILE_FLOWER_BOX,1,4,9);
-    px(TILE_FLOWER_BOX,3,3,15);
-    px(TILE_FLOWER_BOX,5,4,9);
+    for (x = 0; x < 8; x++)
+        px(TILE_FLOWER_BOX,x,7,7);
 
     /* =====================================================
        TREES
@@ -919,10 +981,7 @@ void tilesetInit(void)
        BUSH
        ===================================================== */
 
-    fill(
-        TILE_BUSH,
-        1
-    );
+    fill(TILE_BUSH, 1);
 
     rect(
         TILE_BUSH,
@@ -948,10 +1007,7 @@ void tilesetInit(void)
        WATER
        ===================================================== */
 
-    fill(
-        TILE_WATER,
-        14
-    );
+    fill(TILE_WATER, 14);
 
     px(TILE_WATER,1,2,15);
     px(TILE_WATER,2,2,15);

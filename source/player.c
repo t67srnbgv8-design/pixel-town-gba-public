@@ -14,34 +14,24 @@ enum
     DIR_RIGHT
 };
 
-/*
-    Raw GBA OAM bits.
-
-    attr0:
-    bits 8-9  = object mode
-    bit  13   = 256-color when set; clear = 16-color
-    bits 14-15 = shape
-
-    attr1:
-    bits 14-15 = size
-
-    For a 16x32 sprite:
-    shape = TALL
-    size  = 1
-*/
-
-#define OBJ_Y_MASK          0x00FF
-#define OBJ_X_MASK          0x01FF
-
-#define OBJ_MODE_HIDE       0x0200
-
-#define OBJ_SHAPE_TALL      0x8000
-#define OBJ_SIZE_16X32      0x4000
-
-#define OBJ_PRIORITY_1      0x0400
+#define OBJ_Y_MASK       0x00FF
+#define OBJ_X_MASK       0x01FF
+#define OBJ_HIDE         0x0200
+#define OBJ_SHAPE_TALL   0x8000
+#define OBJ_SIZE_16X32   0x4000
+#define OBJ_PRIORITY_1   0x0400
 
 /* =========================================================
-   SPRITE DRAWING
+   CORRECT GBA 4BPP OBJ TILE WRITER
+
+   16x32 object in 1D mapping:
+
+       tile 0  tile 1
+       tile 2  tile 3
+       tile 4  tile 5
+       tile 6  tile 7
+
+   Each 8x8 4bpp tile = 32 bytes = 16 u16.
    ========================================================= */
 
 static void spritePixel(
@@ -51,7 +41,12 @@ static void spritePixel(
     int color
 )
 {
-    int p;
+    int tileX;
+    int tileY;
+    int tile;
+    int localX;
+    int localY;
+    int pixelInTile;
     int word;
     int shift;
 
@@ -61,24 +56,35 @@ static void spritePixel(
         y < 0 ||
         y >= 32
     )
-    {
         return;
-    }
 
-    p =
-        y * 16 + x;
+    tileX = x >> 3;
+    tileY = y >> 3;
+
+    tile =
+        tileY * 2 +
+        tileX;
+
+    localX =
+        x & 7;
+
+    localY =
+        y & 7;
+
+    pixelInTile =
+        localY * 8 +
+        localX;
 
     word =
-        p >> 2;
+        tile * 16 +
+        (pixelInTile >> 2);
 
     shift =
-        (p & 3) * 4;
+        (pixelInTile & 3) * 4;
 
-    gfx[word] &=
-        ~(0xF << shift);
-
-    gfx[word] |=
-        (color & 15) << shift;
+    gfx[word] =
+        (gfx[word] & ~(0xF << shift)) |
+        ((color & 15) << shift);
 }
 
 static void spriteRect(
@@ -94,82 +100,46 @@ static void spriteRect(
     int y;
 
     for (y = y1; y <= y2; y++)
-    {
         for (x = x1; x <= x2; x++)
-        {
-            spritePixel(
-                gfx,
-                x,
-                y,
-                color
-            );
-        }
-    }
+            spritePixel(gfx, x, y, color);
 }
 
-static void clearSprite(
-    u16 *gfx
-)
+static void clearSprite(u16 *gfx)
 {
     int i;
 
     /*
-        16 x 32 pixels
-        4 bits per pixel
-        = 256 bytes
-        = 128 u16
+        8 OBJ tiles * 16 u16 per tile.
     */
 
     for (i = 0; i < 128; i++)
         gfx[i] = 0;
 }
 
-/* =========================================================
-   APPEARANCE
-   ========================================================= */
-
-static int getHairColor(void)
+static int hairColorIndex(void)
 {
-    switch (
-        characterConfig.hairColor
-    )
+    switch (characterConfig.hairColor)
     {
-        case 0:
-            return 2;
-
-        case 1:
-            return 3;
-
-        case 2:
-            return 4;
-
-        default:
-            return 5;
+        case 0: return 2;
+        case 1: return 3;
+        case 2: return 4;
+        default: return 5;
     }
 }
 
-static int getShirtColor(void)
+static int clothesColorIndex(void)
 {
-    switch (
-        characterConfig.clothes
-    )
+    switch (characterConfig.clothes)
     {
-        case 0:
-            return 6;
-
-        case 1:
-            return 7;
-
-        case 2:
-            return 8;
-
-        default:
-            return 9;
+        case 0: return 6;
+        case 1: return 7;
+        case 2: return 8;
+        default: return 9;
     }
 }
 
 /* =========================================================
-   PLAYER GRAPHICS
+   ORIGINAL GBA-RPG STYLE CHARACTER
    ========================================================= */
 
 static void makePlayerFrame(
@@ -179,439 +149,166 @@ static void makePlayerFrame(
 )
 {
     int hair;
-    int shirt;
-
-    int leftLegOffset = 0;
-    int rightLegOffset = 0;
+    int clothes;
 
     hair =
-        getHairColor();
+        hairColorIndex();
 
-    shirt =
-        getShirtColor();
+    clothes =
+        clothesColorIndex();
 
-    clearSprite(
-        gfx
-    );
+    clearSprite(gfx);
 
-    /*
-        Walking animation.
+    /* shadow */
+    spriteRect(gfx, 4, 29, 11, 30, 1);
 
-        The feet alternate slightly.
-    */
-
-    if (frame == 1)
+    /* legs */
+    if (frame == 0)
     {
-        leftLegOffset = -1;
-        rightLegOffset = 1;
+        spriteRect(gfx, 5, 22, 7, 28, 10);
+        spriteRect(gfx, 8, 22, 10, 28, 10);
+
+        spriteRect(gfx, 4, 27, 7, 29, 1);
+        spriteRect(gfx, 8, 27, 11, 29, 1);
     }
+    else
+    {
+        spriteRect(gfx, 4, 22, 6, 28, 10);
+        spriteRect(gfx, 9, 22, 11, 28, 10);
 
-    /* =====================================================
-       SHADOW
-       ===================================================== */
-
-    spriteRect(
-        gfx,
-        4,
-        29,
-        11,
-        30,
-        1
-    );
-
-    /* =====================================================
-       LEGS
-       ===================================================== */
-
-    spriteRect(
-        gfx,
-        5 + leftLegOffset,
-        22,
-        7 + leftLegOffset,
-        28,
-        10
-    );
-
-    spriteRect(
-        gfx,
-        8 + rightLegOffset,
-        22,
-        10 + rightLegOffset,
-        28,
-        10
-    );
-
-    /* =====================================================
-       SHOES
-       ===================================================== */
-
-    spriteRect(
-        gfx,
-        4 + leftLegOffset,
-        28,
-        7 + leftLegOffset,
-        30,
-        1
-    );
-
-    spriteRect(
-        gfx,
-        8 + rightLegOffset,
-        28,
-        11 + rightLegOffset,
-        30,
-        1
-    );
+        spriteRect(gfx, 3, 27, 6, 29, 1);
+        spriteRect(gfx, 9, 27, 12, 29, 1);
+    }
 
     /* =====================================================
        BODY
        ===================================================== */
 
-    if (
-        characterConfig.gender == 0
-    )
+    if (characterConfig.gender == 0)
     {
-        /*
-            Male body
-        */
-
-        spriteRect(
-            gfx,
-            4,
-            14,
-            11,
-            23,
-            shirt
-        );
-
-        spriteRect(
-            gfx,
-            3,
-            15,
-            4,
-            22,
-            11
-        );
-
-        spriteRect(
-            gfx,
-            11,
-            15,
-            12,
-            22,
-            11
-        );
+        /* broader male torso */
+        spriteRect(gfx, 4, 14, 11, 22, clothes);
+        spriteRect(gfx, 3, 16, 4, 21, 11);
+        spriteRect(gfx, 11, 16, 12, 21, 11);
     }
     else
     {
-        /*
-            Female body
-        */
+        /* narrower upper body + wider lower silhouette */
+        spriteRect(gfx, 5, 14, 10, 20, clothes);
+        spriteRect(gfx, 4, 19, 11, 23, clothes);
 
-        spriteRect(
-            gfx,
-            5,
-            14,
-            10,
-            21,
-            shirt
-        );
-
-        /*
-            Lower clothing shape.
-        */
-
-        spriteRect(
-            gfx,
-            4,
-            20,
-            11,
-            23,
-            shirt
-        );
-
-        spriteRect(
-            gfx,
-            3,
-            16,
-            4,
-            22,
-            11
-        );
-
-        spriteRect(
-            gfx,
-            11,
-            16,
-            12,
-            22,
-            11
-        );
+        spriteRect(gfx, 3, 16, 4, 21, 11);
+        spriteRect(gfx, 11, 16, 12, 21, 11);
     }
 
     /* =====================================================
-       NECK
+       CLOTHING TYPES
        ===================================================== */
 
-    spriteRect(
-        gfx,
-        7,
-        12,
-        8,
-        15,
-        11
-    );
+    if (characterConfig.clothes == 0)
+    {
+        /* T-shirt */
+        spriteRect(gfx, 3, 15, 5, 18, clothes);
+        spriteRect(gfx, 10, 15, 12, 18, clothes);
+
+        spritePixel(gfx, 6, 15, 12);
+    }
+    else if (characterConfig.clothes == 1)
+    {
+        /* hoodie */
+        spriteRect(gfx, 3, 14, 12, 18, clothes);
+        spriteRect(gfx, 4, 13, 11, 15, clothes);
+
+        spritePixel(gfx, 7, 16, 12);
+        spritePixel(gfx, 8, 16, 12);
+
+        spriteRect(gfx, 6, 20, 9, 21, 1);
+    }
+    else if (characterConfig.clothes == 2)
+    {
+        /* jacket */
+        spriteRect(gfx, 3, 15, 12, 22, clothes);
+
+        spriteRect(gfx, 7, 15, 8, 22, 1);
+
+        spritePixel(gfx, 5, 17, 12);
+        spritePixel(gfx, 10, 17, 12);
+    }
+    else
+    {
+        /* sweater */
+        spriteRect(gfx, 3, 15, 12, 22, clothes);
+        spriteRect(gfx, 3, 18, 4, 22, clothes);
+        spriteRect(gfx, 11, 18, 12, 22, clothes);
+
+        spriteRect(gfx, 5, 21, 10, 22, 1);
+    }
+
+    /* neck */
+    spriteRect(gfx, 7, 12, 8, 15, 11);
 
     /* =====================================================
        HEAD
        ===================================================== */
 
-    spriteRect(
-        gfx,
-        4,
-        5,
-        11,
-        13,
-        11
-    );
-
-    /*
-        Slightly rounder face.
-    */
-
-    spriteRect(
-        gfx,
-        5,
-        4,
-        10,
-        14,
-        11
-    );
+    spriteRect(gfx, 5, 4, 10, 13, 11);
+    spriteRect(gfx, 4, 6, 11, 12, 11);
 
     /* ears */
-
-    spriteRect(
-        gfx,
-        3,
-        8,
-        4,
-        11,
-        11
-    );
-
-    spriteRect(
-        gfx,
-        11,
-        8,
-        12,
-        11,
-        11
-    );
+    spriteRect(gfx, 3, 8, 4, 11, 11);
+    spriteRect(gfx, 11, 8, 12, 11, 11);
 
     /* =====================================================
        HAIR
        ===================================================== */
 
-    spriteRect(
-        gfx,
-        4,
-        3,
-        11,
-        6,
-        hair
-    );
+    spriteRect(gfx, 5, 2, 10, 4, hair);
+    spriteRect(gfx, 4, 3, 11, 7, hair);
 
-    spriteRect(
-        gfx,
-        3,
-        5,
-        5,
-        9,
-        hair
-    );
+    spritePixel(gfx, 3, 5, hair);
+    spritePixel(gfx, 12, 5, hair);
 
-    spriteRect(
-        gfx,
-        10,
-        5,
-        12,
-        8,
-        hair
-    );
+    spriteRect(gfx, 3, 6, 5, 9, hair);
+    spriteRect(gfx, 10, 6, 12, 8, hair);
 
-    /*
-        Hair crown shape.
-    */
-
-    spritePixel(
-        gfx,
-        5,
-        2,
-        hair
-    );
-
-    spriteRect(
-        gfx,
-        6,
-        2,
-        9,
-        2,
-        hair
-    );
-
-    spritePixel(
-        gfx,
-        10,
-        2,
-        hair
-    );
-
-    /*
-        Long hair.
-    */
-
-    if (
-        characterConfig.hairLength == 1
-    )
+    if (characterConfig.hairLength)
     {
-        spriteRect(
-            gfx,
-            3,
-            8,
-            4,
-            16,
-            hair
-        );
+        spriteRect(gfx, 3, 8, 4, 16, hair);
+        spriteRect(gfx, 11, 8, 12, 16, hair);
 
-        spriteRect(
-            gfx,
-            11,
-            8,
-            12,
-            16,
-            hair
-        );
-
-        spritePixel(
-            gfx,
-            4,
-            16,
-            hair
-        );
-
-        spritePixel(
-            gfx,
-            11,
-            16,
-            hair
-        );
+        if (characterConfig.gender == 1)
+        {
+            spritePixel(gfx, 4, 16, hair);
+            spritePixel(gfx, 11, 16, hair);
+        }
     }
 
     /* =====================================================
-       FACE / DIRECTION
+       DIRECTION
        ===================================================== */
 
-    if (
-        direction == DIR_DOWN
-    )
+    if (direction == DIR_DOWN)
     {
-        /*
-            Front-facing eyes.
-        */
+        spritePixel(gfx, 6, 9, 1);
+        spritePixel(gfx, 9, 9, 1);
 
-        spritePixel(
-            gfx,
-            6,
-            9,
-            1
-        );
-
-        spritePixel(
-            gfx,
-            9,
-            9,
-            1
-        );
-
-        /*
-            tiny face shadow
-        */
-
-        spritePixel(
-            gfx,
-            8,
-            12,
-            3
-        );
+        spritePixel(gfx, 7, 12, 3);
     }
-    else if (
-        direction == DIR_LEFT
-    )
+    else if (direction == DIR_UP)
     {
-        spritePixel(
-            gfx,
-            5,
-            9,
-            1
-        );
-
-        spritePixel(
-            gfx,
-            4,
-            11,
-            3
-        );
+        /* back of head */
+        spriteRect(gfx, 5, 6, 10, 11, hair);
+        spriteRect(gfx, 4, 8, 11, 10, hair);
     }
-    else if (
-        direction == DIR_RIGHT
-    )
+    else if (direction == DIR_LEFT)
     {
-        spritePixel(
-            gfx,
-            10,
-            9,
-            1
-        );
-
-        spritePixel(
-            gfx,
-            11,
-            11,
-            3
-        );
+        spritePixel(gfx, 5, 9, 1);
+        spritePixel(gfx, 4, 11, 3);
     }
     else
     {
-        /*
-            Back-facing hair.
-        */
-
-        spriteRect(
-            gfx,
-            5,
-            7,
-            10,
-            11,
-            hair
-        );
-    }
-
-    /* =====================================================
-       CLOTHING HIGHLIGHT
-       ===================================================== */
-
-    if (
-        direction != DIR_UP
-    )
-    {
-        spriteRect(
-            gfx,
-            5,
-            15,
-            6,
-            18,
-            12
-        );
+        spritePixel(gfx, 10, 9, 1);
+        spritePixel(gfx, 11, 11, 3);
     }
 }
 
@@ -619,57 +316,19 @@ static void makePlayerFrame(
    COLLISION
    ========================================================= */
 
-static int canMoveTo(
-    int x,
-    int y
-)
+static int canMoveTo(int x, int y)
 {
-    /*
-        Collision only around feet.
-
-        This makes the player feel like a top-down RPG
-        character rather than a rectangular object.
-    */
-
-    if (
-        worldIsBlocked(
-            x + 4,
-            y + 26
-        )
-    )
-    {
+    if (worldIsBlocked(x + 4, y + 26))
         return 0;
-    }
 
-    if (
-        worldIsBlocked(
-            x + 11,
-            y + 26
-        )
-    )
-    {
+    if (worldIsBlocked(x + 11, y + 26))
         return 0;
-    }
 
-    if (
-        worldIsBlocked(
-            x + 4,
-            y + 29
-        )
-    )
-    {
+    if (worldIsBlocked(x + 4, y + 29))
         return 0;
-    }
 
-    if (
-        worldIsBlocked(
-            x + 11,
-            y + 29
-        )
-    )
-    {
+    if (worldIsBlocked(x + 11, y + 29))
         return 0;
-    }
 
     return 1;
 }
@@ -685,104 +344,51 @@ void playerInit(void)
     player.x = 244;
     player.y = 92;
 
-    player.direction =
-        DIR_DOWN;
-
+    player.direction = DIR_DOWN;
     player.frame = 0;
-
     player.animationTimer = 0;
 
-    /* =====================================================
-       OBJ PALETTE
-       ===================================================== */
+    /* transparent */
+    SPRITE_PALETTE[0] = RGB5(0,0,0);
+
+    /* outline */
+    SPRITE_PALETTE[1] = RGB5(3,3,4);
+
+    /* hair */
+    SPRITE_PALETTE[2] = RGB5(2,2,3);
+    SPRITE_PALETTE[3] = RGB5(12,6,3);
+    SPRITE_PALETTE[4] = RGB5(28,22,10);
+    SPRITE_PALETTE[5] = RGB5(21,7,3);
+
+    /* clothing */
+    SPRITE_PALETTE[6] = RGB5(5,14,29);
+    SPRITE_PALETTE[7] = RGB5(26,5,5);
+    SPRITE_PALETTE[8] = RGB5(6,23,9);
+    SPRITE_PALETTE[9] = RGB5(18,7,25);
+
+    /* trousers */
+    SPRITE_PALETTE[10] = RGB5(8,9,12);
+
+    /* skin */
+    SPRITE_PALETTE[11] = RGB5(27,18,13);
+
+    /* highlight */
+    SPRITE_PALETTE[12] = RGB5(31,31,31);
 
     /*
-        Transparent
+        Clear enough OBJ VRAM for our eight tiles.
     */
-
-    SPRITE_PALETTE[0] =
-        RGB5(0,0,0);
-
-    /*
-        Outline / shoes
-    */
-
-    SPRITE_PALETTE[1] =
-        RGB5(3,3,4);
-
-    /*
-        Hair colours
-    */
-
-    SPRITE_PALETTE[2] =
-        RGB5(2,2,3);
-
-    SPRITE_PALETTE[3] =
-        RGB5(12,6,3);
-
-    SPRITE_PALETTE[4] =
-        RGB5(28,22,10);
-
-    SPRITE_PALETTE[5] =
-        RGB5(21,7,3);
-
-    /*
-        Clothes
-    */
-
-    SPRITE_PALETTE[6] =
-        RGB5(5,14,29);
-
-    SPRITE_PALETTE[7] =
-        RGB5(26,5,5);
-
-    SPRITE_PALETTE[8] =
-        RGB5(6,23,9);
-
-    SPRITE_PALETTE[9] =
-        RGB5(18,7,25);
-
-    /*
-        Trousers
-    */
-
-    SPRITE_PALETTE[10] =
-        RGB5(8,9,12);
-
-    /*
-        Skin
-    */
-
-    SPRITE_PALETTE[11] =
-        RGB5(27,18,13);
-
-    /*
-        Highlight
-    */
-
-    SPRITE_PALETTE[12] =
-        RGB5(31,31,31);
-
-    /* =====================================================
-       CLEAR OBJ VRAM
-       ===================================================== */
 
     for (i = 0; i < 128; i++)
-    {
         ((u16 *)SPRITE_GFX)[i] = 0;
-    }
 
-    /* =====================================================
-       HIDE ALL SPRITES
-
-       attr0 object mode = 2 means disabled.
-       ===================================================== */
+    /*
+        Hide all objects.
+    */
 
     for (i = 0; i < 128; i++)
     {
-        OAM[i].attr0 =
-            OBJ_MODE_HIDE;
-
+        OAM[i].attr0 = OBJ_HIDE;
         OAM[i].attr1 = 0;
         OAM[i].attr2 = 0;
     }
@@ -792,6 +398,13 @@ void playerInit(void)
         player.direction,
         player.frame
     );
+
+    /*
+        Character menu left forced blank enabled.
+        Everything is ready now, so turn LCD back on.
+    */
+
+    REG_DISPCNT &= ~0x0080;
 }
 
 /* =========================================================
@@ -800,96 +413,53 @@ void playerInit(void)
 
 void playerUpdate(void)
 {
-    int newX;
-    int newY;
-    int moving;
+    int newX = player.x;
+    int newY = player.y;
+    int moving = 0;
 
     u16 held;
 
-    newX =
-        player.x;
-
-    newY =
-        player.y;
-
-    moving = 0;
-
     scanKeys();
+    held = keysHeld();
 
-    held =
-        keysHeld();
-
-    /*
-        No diagonal movement yet.
-    */
-
-    if (
-        held & KEY_UP
-    )
+    if (held & KEY_UP)
     {
         newY--;
-
-        player.direction =
-            DIR_UP;
-
+        player.direction = DIR_UP;
         moving = 1;
     }
-    else if (
-        held & KEY_DOWN
-    )
+    else if (held & KEY_DOWN)
     {
         newY++;
-
-        player.direction =
-            DIR_DOWN;
-
+        player.direction = DIR_DOWN;
         moving = 1;
     }
-    else if (
-        held & KEY_LEFT
-    )
+    else if (held & KEY_LEFT)
     {
         newX--;
-
-        player.direction =
-            DIR_LEFT;
-
+        player.direction = DIR_LEFT;
         moving = 1;
     }
-    else if (
-        held & KEY_RIGHT
-    )
+    else if (held & KEY_RIGHT)
     {
         newX++;
-
-        player.direction =
-            DIR_RIGHT;
-
+        player.direction = DIR_RIGHT;
         moving = 1;
     }
 
     if (
         moving &&
-        canMoveTo(
-            newX,
-            newY
-        )
+        canMoveTo(newX, newY)
     )
     {
-        player.x =
-            newX;
-
-        player.y =
-            newY;
+        player.x = newX;
+        player.y = newY;
 
         player.animationTimer++;
 
-        if (
-            player.animationTimer >= 8
-        )
+        if (player.animationTimer >= 8)
         {
             player.animationTimer = 0;
-
             player.frame ^= 1;
         }
     }
@@ -898,10 +468,6 @@ void playerUpdate(void)
         player.animationTimer = 0;
         player.frame = 0;
     }
-
-    /*
-        Rebuild current 16x32 frame.
-    */
 
     makePlayerFrame(
         (u16 *)SPRITE_GFX,
@@ -919,58 +485,22 @@ void playerDraw(
     int cameraY
 )
 {
-    int screenX;
-    int screenY;
+    int screenX =
+        player.x - cameraX;
 
-    screenX =
-        player.x -
-        cameraX;
-
-    screenY =
-        player.y -
-        cameraY;
-
-    /*
-        ATTR0
-
-        bits 0-7   Y
-        bits 14-15 shape
-
-        TALL + 4bpp.
-        4bpp is the default, so no special flag required.
-    */
+    int screenY =
+        player.y - cameraY;
 
     OAM[0].attr0 =
         (screenY & OBJ_Y_MASK) |
         OBJ_SHAPE_TALL;
 
-    /*
-        ATTR1
-
-        bits 0-8   X
-        bits 14-15 size
-
-        Tall + size 1 = 16x32.
-    */
-
     OAM[0].attr1 =
         (screenX & OBJ_X_MASK) |
         OBJ_SIZE_16X32;
 
-    /*
-        ATTR2
-
-        tile 0
-        priority 1
-        palette bank 0
-    */
-
     OAM[0].attr2 =
         OBJ_PRIORITY_1;
-
-    /*
-        Copy shadow OAM to hardware OAM.
-    */
 
     CpuFastSet(
         OAM,

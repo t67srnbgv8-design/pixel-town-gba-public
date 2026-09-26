@@ -12,79 +12,224 @@ static void put(
 )
 {
     if (
-        x<0 ||
-        y<0 ||
-        x>=META_MAP_W ||
-        y>=META_MAP_H
+        x < 0 ||
+        y < 0 ||
+        x >= META_MAP_W ||
+        y >= META_MAP_H
     )
+    {
         return;
+    }
 
-    worldMap[y][x]=id;
+    worldMap[y][x] = id;
 }
 
-/*
-   Compact house.
+/* =========================================================
+   HOUSE
 
-   5 metatiles wide = 80px.
+   7 metatiles wide = 112 px
 
-   Roof:   16px
-   wall:   32px
-   door:   32px
+   Structure:
 
-   Much closer to the player scale.
-*/
+        /---------------\
+       /      ROOF       \
+      /___________________\
+      |      EAVES        |
+      | WIN | DOOR | WIN  |
+      |_____ENTRANCE______|
+
+   Individual reusable pieces rather than one giant
+   house graphic.
+   ========================================================= */
 
 static void house(
     int x,
     int y
 )
 {
-    /*
-       Roof
-    */
-
-    put(x,   y,META_ROOF_L);
-    put(x+1, y,META_ROOF_M);
-    put(x+2, y,META_ROOF_M);
-    put(x+3, y,META_ROOF_M);
-    put(x+4, y,META_ROOF_R);
+    int i;
 
     /*
-       Upper facade
-    */
+        Upper roof.
 
-    put(x,   y+1,META_WALL);
-    put(x+1, y+1,META_WINDOW_TOP);
-    put(x+2, y+1,META_DOOR_TOP);
-    put(x+3, y+1,META_WINDOW_TOP);
-    put(x+4, y+1,META_WALL);
-
-    /*
-       Lower facade
-    */
-
-    put(x,   y+2,META_WALL);
-    put(x+1, y+2,META_WINDOW_BOTTOM);
-    put(x+2, y+2,META_DOOR_BOTTOM);
-    put(x+3, y+2,META_WINDOW_BOTTOM);
-    put(x+4, y+2,META_WALL);
-
-    /*
-       Narrow entrance path.
+        Width: 7 metatiles.
     */
 
     put(
-        x+2,
-        y+3,
+        x,
+        y,
+        META_ROOF_LEFT
+    );
+
+    for (
+        i = 1;
+        i <= 5;
+        i++
+    )
+    {
+        put(
+            x + i,
+            y,
+            META_ROOF_MIDDLE
+        );
+    }
+
+    put(
+        x + 6,
+        y,
+        META_ROOF_RIGHT
+    );
+
+    /*
+        Lower roof / eaves.
+    */
+
+    put(
+        x,
+        y + 1,
+        META_ROOF_EAVE_LEFT
+    );
+
+    for (
+        i = 1;
+        i <= 5;
+        i++
+    )
+    {
+        put(
+            x + i,
+            y + 1,
+            META_ROOF_EAVE_MIDDLE
+        );
+    }
+
+    put(
+        x + 6,
+        y + 1,
+        META_ROOF_EAVE_RIGHT
+    );
+
+    /*
+        Main facade.
+
+        Windows are full 16x16 details.
+
+        Door is centered.
+    */
+
+    put(
+        x,
+        y + 2,
+        META_WALL
+    );
+
+    put(
+        x + 1,
+        y + 2,
+        META_WINDOW
+    );
+
+    put(
+        x + 2,
+        y + 2,
+        META_WALL_DETAIL
+    );
+
+    put(
+        x + 3,
+        y + 2,
+        META_DOOR_TOP
+    );
+
+    put(
+        x + 4,
+        y + 2,
+        META_WALL_DETAIL
+    );
+
+    put(
+        x + 5,
+        y + 2,
+        META_WINDOW
+    );
+
+    put(
+        x + 6,
+        y + 2,
+        META_WALL
+    );
+
+    /*
+        Lower facade.
+
+        Door continues toward the ground.
+
+        Decorative flower boxes give the front
+        more visual detail.
+    */
+
+    put(
+        x,
+        y + 3,
+        META_WALL
+    );
+
+    put(
+        x + 1,
+        y + 3,
+        META_FLOWER_BOX
+    );
+
+    put(
+        x + 2,
+        y + 3,
+        META_WALL
+    );
+
+    put(
+        x + 3,
+        y + 3,
+        META_DOOR_BOTTOM
+    );
+
+    put(
+        x + 4,
+        y + 3,
+        META_SIGN
+    );
+
+    put(
+        x + 5,
+        y + 3,
+        META_FLOWER_BOX
+    );
+
+    put(
+        x + 6,
+        y + 3,
+        META_WALL
+    );
+
+    /*
+        Front path.
+    */
+
+    put(
+        x + 3,
+        y + 4,
         META_PATH_V
     );
 
     put(
-        x+2,
-        y+4,
+        x + 3,
+        y + 5,
         META_PATH_V
     );
 }
+
+/* =========================================================
+   TREE
+   ========================================================= */
 
 static void tree(
     int x,
@@ -98,78 +243,99 @@ static void tree(
     );
 
     put(
-        x+1,
+        x + 1,
         y,
         META_TREE_TR
     );
 
     put(
         x,
-        y+1,
+        y + 1,
         META_TREE_BL
     );
 
     put(
-        x+1,
-        y+1,
+        x + 1,
+        y + 1,
         META_TREE_BR
     );
 }
 
+/* =========================================================
+   WORLD
+   ========================================================= */
+
 void worldInit(void)
 {
+    int x;
+    int y;
+
     /*
-       Grass base.
+        Grass base.
     */
 
-    for (int y=0; y<META_MAP_H; y++)
+    for (
+        y = 0;
+        y < META_MAP_H;
+        y++
+    )
     {
-        for (int x=0; x<META_MAP_W; x++)
+        for (
+            x = 0;
+            x < META_MAP_W;
+            x++
+        )
         {
-            worldMap[y][x]=META_GRASS;
+            int n;
 
-            /*
-               Sparse natural variation.
-               Not a checkerboard.
-            */
+            worldMap[y][x] =
+                META_GRASS;
 
-            int n=
-                x*37 +
-                y*17 +
-                x*y*3;
+            n =
+                x * 37 +
+                y * 17 +
+                x * y * 3;
 
-            if ((n%41)==7)
-                worldMap[y][x]
-                    =META_GRASS_DETAIL;
+            if ((n % 41) == 7)
+            {
+                worldMap[y][x] =
+                    META_GRASS_DETAIL;
+            }
         }
     }
 
     /*
-       Main horizontal road.
-
-       ONLY 32px tall.
+        Main horizontal road.
     */
 
-    for (int x=0; x<META_MAP_W; x++)
+    for (
+        x = 0;
+        x < META_MAP_W;
+        x++
+    )
     {
         put(
             x,
-            9,
+            10,
             META_PATH_TOP
         );
 
         put(
             x,
-            10,
+            11,
             META_PATH_BOTTOM
         );
     }
 
     /*
-       Narrow vertical street.
+        Vertical central street.
     */
 
-    for (int y=5; y<=10; y++)
+    for (
+        y = 6;
+        y <= 11;
+        y++
+    )
     {
         put(
             15,
@@ -179,13 +345,13 @@ void worldInit(void)
     }
 
     /*
-       Houses.
+        NEW HOUSES.
 
-       More space between them.
+        Wider than before and spaced apart.
     */
 
     house(
-        5,
+        3,
         3
     );
 
@@ -195,95 +361,100 @@ void worldInit(void)
     );
 
     /*
-       Trees.
-
-       Slightly irregular positioning.
+        Trees.
     */
 
-    tree(0,1);
-    tree(2,2);
+    tree(0,0);
 
-    tree(11,0);
+    tree(11,1);
 
     tree(17,1);
 
-    tree(28,1);
+    tree(29,0);
 
-    tree(1,12);
-    tree(4,13);
+    tree(1,13);
+
+    tree(5,13);
 
     tree(9,12);
 
-    tree(21,12);
+    tree(21,13);
+
     tree(26,13);
 
-    tree(29,11);
+    tree(30,12);
 
     /*
-       Small bushes around houses.
+        Bushes around properties.
     */
 
     put(
-        4,
-        7,
+        2,
+        8,
         META_BUSH
     );
 
     put(
         10,
-        7,
+        8,
         META_BUSH
     );
 
     put(
         20,
-        7,
+        8,
         META_BUSH
     );
 
     put(
-        26,
-        7,
+        28,
+        8,
         META_BUSH
     );
 
     /*
-       Flowers.
-
-       ALWAYS BG0.
+        Flowers.
     */
 
     put(
-        3,
-        6,
+        1,
+        7,
         META_FLOWER
     );
 
     put(
         11,
-        6,
+        7,
         META_FLOWER
     );
 
     put(
         19,
-        6,
+        7,
         META_FLOWER
     );
 
     put(
-        27,
-        6,
+        29,
+        7,
         META_FLOWER
     );
 
     /*
-       Pond.
+        Pond.
     */
 
-    for (int y=12; y<=14; y++)
+    for (
+        y = 13;
+        y <= 15;
+        y++
+    )
     {
-        for (int x=13; x<=18; x++)
+        for (
+            x = 13;
+            x <= 18;
+            x++
+        )
         {
             put(
                 x,
@@ -293,6 +464,10 @@ void worldInit(void)
         }
     }
 }
+
+/* =========================================================
+   TILEMAP WRITING
+   ========================================================= */
 
 static void writeTile(
     volatile u16 *left,
@@ -304,146 +479,200 @@ static void writeTile(
     int tile
 )
 {
-    if (x<32)
+    if (x < 32)
     {
         left[
-            y*32+x
-        ]=tile;
+            y * 32 + x
+        ] = tile;
     }
     else
     {
         right[
-            y*32+(x-32)
-        ]=tile;
+            y * 32 +
+            (x - 32)
+        ] = tile;
     }
 }
 
+/* =========================================================
+   DRAW WORLD
+   ========================================================= */
+
 void worldDraw(void)
 {
-    volatile u16 *bg0L=
+    int i;
+    int mx;
+    int my;
+
+    volatile u16 *bg0L =
         SCREEN_BASE_BLOCK(28);
 
-    volatile u16 *bg0R=
+    volatile u16 *bg0R =
         SCREEN_BASE_BLOCK(29);
 
-    volatile u16 *bg1L=
+    volatile u16 *bg1L =
         SCREEN_BASE_BLOCK(30);
 
-    volatile u16 *bg1R=
+    volatile u16 *bg1R =
         SCREEN_BASE_BLOCK(31);
 
-    for (int i=0; i<1024; i++)
-    {
-        bg0L[i]=0;
-        bg0R[i]=0;
-
-        bg1L[i]=0;
-        bg1R[i]=0;
-    }
+    /*
+        Clear both 512px BG layers.
+    */
 
     for (
-        int my=0;
-        my<META_MAP_H;
+        i = 0;
+        i < 1024;
+        i++
+    )
+    {
+        bg0L[i] = 0;
+        bg0R[i] = 0;
+
+        bg1L[i] = 0;
+        bg1R[i] = 0;
+    }
+
+    /*
+        Expand 16x16 metatiles into
+        four 8x8 hardware tiles.
+    */
+
+    for (
+        my = 0;
+        my < META_MAP_H;
         my++
     )
     {
         for (
-            int mx=0;
-            mx<META_MAP_W;
+            mx = 0;
+            mx < META_MAP_W;
             mx++
         )
         {
-            int id=
+            int id;
+            int tx;
+            int ty;
+
+            Metatile *m;
+
+            id =
                 worldMap[my][mx];
 
-            Metatile *m=
+            m =
                 &metatiles[id];
 
-            int tx=mx*2;
-            int ty=my*2;
+            tx =
+                mx * 2;
+
+            ty =
+                my * 2;
 
             /*
-               GROUND
+                BG0 / ground.
             */
 
             writeTile(
-                bg0L,bg0R,
-                tx,ty,
+                bg0L,
+                bg0R,
+                tx,
+                ty,
                 m->bottom[0]
             );
 
             writeTile(
-                bg0L,bg0R,
-                tx+1,ty,
+                bg0L,
+                bg0R,
+                tx + 1,
+                ty,
                 m->bottom[1]
             );
 
             writeTile(
-                bg0L,bg0R,
-                tx,ty+1,
+                bg0L,
+                bg0R,
+                tx,
+                ty + 1,
                 m->bottom[2]
             );
 
             writeTile(
-                bg0L,bg0R,
-                tx+1,ty+1,
+                bg0L,
+                bg0R,
+                tx + 1,
+                ty + 1,
                 m->bottom[3]
             );
 
             /*
-               OVERHEAD
-
-               In v13 only tree canopy
-               graphics use this layer.
+                BG1 / overhead.
             */
 
             writeTile(
-                bg1L,bg1R,
-                tx,ty,
+                bg1L,
+                bg1R,
+                tx,
+                ty,
                 m->top[0]
             );
 
             writeTile(
-                bg1L,bg1R,
-                tx+1,ty,
+                bg1L,
+                bg1R,
+                tx + 1,
+                ty,
                 m->top[1]
             );
 
             writeTile(
-                bg1L,bg1R,
-                tx,ty+1,
+                bg1L,
+                bg1R,
+                tx,
+                ty + 1,
                 m->top[2]
             );
 
             writeTile(
-                bg1L,bg1R,
-                tx+1,ty+1,
+                bg1L,
+                bg1R,
+                tx + 1,
+                ty + 1,
                 m->top[3]
             );
         }
     }
 }
 
+/* =========================================================
+   COLLISION
+   ========================================================= */
+
 int worldIsBlocked(
     int pixelX,
     int pixelY
 )
 {
+    int mx;
+    int my;
+    int id;
+
     if (
-        pixelX<0 ||
-        pixelY<0 ||
-        pixelX>=WORLD_W ||
-        pixelY>=WORLD_H
+        pixelX < 0 ||
+        pixelY < 0 ||
+        pixelX >= WORLD_W ||
+        pixelY >= WORLD_H
     )
+    {
         return 1;
+    }
 
-    int mx=
-        pixelX>>4;
+    mx =
+        pixelX >> 4;
 
-    int my=
-        pixelY>>4;
+    my =
+        pixelY >> 4;
 
-    int id=
+    id =
         worldMap[my][mx];
 
     return

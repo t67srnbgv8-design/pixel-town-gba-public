@@ -7,10 +7,10 @@ typedef struct
     int hairColor;
     int hairLength;
     int clothes;
+    int bottomStyle;
 } CharacterConfig;
 
 extern CharacterConfig characterConfig;
-
 void characterSelectRun(void);
 
 #endif

@@ -317,641 +317,153 @@ void tilesetInit(void)
     }
 
     /* =====================================================
-       HOUSE V2 - ROOF
-
-       Important change:
-       transparent corners instead of black pixels.
-       Palette index 0 is transparent on BG1-style graphics,
-       but these roof tiles are on BG0, so we deliberately
-       continue the roof shape cleanly instead of leaving
-       large black triangles.
+       TOWN HOUSES: warm walls, tiled red roof and blue windows.
+       All details remain inside the original 4-bpp BG palette.
        ===================================================== */
 
-    /* LEFT ROOF EDGE */
-
-    fill(TILE_ROOF_SLOPE_L, 8);
-
-    for (y = 0; y < 8; y++)
-    {
-        int edge = 7 - y;
-
-        for (x = 0; x < edge; x++)
-        {
-            /*
-               Instead of black triangle, use the roof
-               highlight/shadow to create a bevel.
-            */
-            px(
-                TILE_ROOF_SLOPE_L,
-                x,
-                y,
-                9
-            );
+    /* Sloping top corners leave grass outside the gable. */
+    fill(TILE_ROOF_SLOPE_L,1);
+    fill(TILE_ROOF_SLOPE_R,1);
+    for(y=0;y<8;y++){
+        int edge=7-y;
+        for(x=edge;x<8;x++){
+            px(TILE_ROOF_SLOPE_L,x,y,8);
+            px(TILE_ROOF_SLOPE_R,7-x,y,8);
         }
-
-        px(
-            TILE_ROOF_SLOPE_L,
-            edge,
-            y,
-            10
-        );
-
-        if (edge + 1 < 8)
-        {
-            px(
-                TILE_ROOF_SLOPE_L,
-                edge + 1,
-                y,
-                9
-            );
-        }
+        px(TILE_ROOF_SLOPE_L,edge,y,10);
+        px(TILE_ROOF_SLOPE_R,7-edge,y,10);
     }
+    px(TILE_ROOF_SLOPE_L,7,5,9);
+    px(TILE_ROOF_SLOPE_R,0,5,9);
 
-    /* CENTER TOP */
-
-    fill(TILE_ROOF_TOP, 8);
-
-    for (x = 0; x < 8; x++)
-    {
-        px(
-            TILE_ROOF_TOP,
-            x,
-            0,
-            10
-        );
-
-        px(
-            TILE_ROOF_TOP,
-            x,
-            1,
-            9
-        );
+    fill(TILE_ROOF_TOP,8);
+    for(x=0;x<8;x++){
+        px(TILE_ROOF_TOP,x,0,1);
+        px(TILE_ROOF_TOP,x,1,10);
+        px(TILE_ROOF_TOP,x,2,9);
     }
+    px(TILE_ROOF_TOP,2,5,9);px(TILE_ROOF_TOP,3,5,9);
 
-    px(TILE_ROOF_TOP,1,4,9);
-    px(TILE_ROOF_TOP,2,4,9);
-
-    px(TILE_ROOF_TOP,5,6,10);
-    px(TILE_ROOF_TOP,6,6,10);
-
-    /* RIGHT ROOF EDGE */
-
-    fill(TILE_ROOF_SLOPE_R, 8);
-
-    for (y = 0; y < 8; y++)
-    {
-        int edge = y;
-
-        for (x = edge + 1; x < 8; x++)
-        {
-            px(
-                TILE_ROOF_SLOPE_R,
-                x,
-                y,
-                9
-            );
-        }
-
-        px(
-            TILE_ROOF_SLOPE_R,
-            edge,
-            y,
-            10
-        );
-
-        if (edge - 1 >= 0)
-        {
-            px(
-                TILE_ROOF_SLOPE_R,
-                edge - 1,
-                y,
-                9
-            );
-        }
+    /* Tiles use short staggered highlights and continuous shadow seams. */
+    fill(TILE_ROOF_RED,8);
+    fill(TILE_ROOF_RED_LIGHT,8);
+    fill(TILE_ROOF_RED_DARK,8);
+    for(x=0;x<8;x++){
+        px(TILE_ROOF_RED,x,3,10);
+        px(TILE_ROOF_RED_LIGHT,x,4,10);
+        px(TILE_ROOF_RED_DARK,x,6,10);
+        px(TILE_ROOF_RED_DARK,x,7,7);
     }
-
-    /* MAIN ROOF */
-
-    fill(TILE_ROOF_RED, 8);
-
-    /*
-       Horizontal shingle rows.
-       Much less random noise than v1.
-    */
-
-    for (x = 0; x < 8; x++)
-    {
-        px(
-            TILE_ROOF_RED,
-            x,
-            3,
-            10
-        );
+    for(x=1;x<7;x+=4){
+        px(TILE_ROOF_RED,x,1,9);px(TILE_ROOF_RED,x+1,1,9);
+        px(TILE_ROOF_RED_LIGHT,x+2,2,9);
+        px(TILE_ROOF_RED_DARK,x,2,9);
     }
+    px(TILE_ROOF_RED,4,5,9);
+    px(TILE_ROOF_RED_LIGHT,1,6,9);
 
-    px(TILE_ROOF_RED,1,2,9);
-    px(TILE_ROOF_RED,2,2,9);
-
-    px(TILE_ROOF_RED,5,6,9);
-    px(TILE_ROOF_RED,6,6,9);
-
-    /* LIGHT ROOF TILE */
-
-    fill(TILE_ROOF_RED_LIGHT, 8);
-
-    for (x = 0; x < 8; x++)
-    {
-        px(
-            TILE_ROOF_RED_LIGHT,
-            x,
-            0,
-            9
-        );
-
-        px(
-            TILE_ROOF_RED_LIGHT,
-            x,
-            4,
-            10
-        );
-    }
-
-    px(TILE_ROOF_RED_LIGHT,2,2,9);
-    px(TILE_ROOF_RED_LIGHT,6,6,9);
-
-    /* DARK LOWER ROOF */
-
-    fill(TILE_ROOF_RED_DARK, 8);
-
-    for (x = 0; x < 8; x++)
-    {
-        px(
-            TILE_ROOF_RED_DARK,
-            x,
-            5,
-            10
-        );
-
-        px(
-            TILE_ROOF_RED_DARK,
-            x,
-            6,
-            10
-        );
-
-        px(
-            TILE_ROOF_RED_DARK,
-            x,
-            7,
-            7
-        );
-    }
-
-    px(TILE_ROOF_RED_DARK,1,2,9);
-    px(TILE_ROOF_RED_DARK,5,3,9);
-
-    /* =====================================================
-       ROOF EAVES
-
-       Strong dark underside creates depth.
-       ===================================================== */
-
-    fill(TILE_ROOF_EAVE_L, 8);
-
-    for (x = 0; x < 8; x++)
-    {
-        px(TILE_ROOF_EAVE_L,x,2,9);
-        px(TILE_ROOF_EAVE_L,x,4,10);
+    /* A heavy eave gives the roof a clear edge above the facade. */
+    fill(TILE_ROOF_EAVE_L,8);
+    fill(TILE_ROOF_EAVE_M,8);
+    fill(TILE_ROOF_EAVE_R,8);
+    for(x=0;x<8;x++){
+        px(TILE_ROOF_EAVE_L,x,1,9);
+        px(TILE_ROOF_EAVE_M,x,1,9);
+        px(TILE_ROOF_EAVE_R,x,1,9);
         px(TILE_ROOF_EAVE_L,x,5,10);
-        px(TILE_ROOF_EAVE_L,x,6,7);
-        px(TILE_ROOF_EAVE_L,x,7,6);
-    }
-
-    px(TILE_ROOF_EAVE_L,0,6,8);
-    px(TILE_ROOF_EAVE_L,1,6,8);
-
-    fill(TILE_ROOF_EAVE_M, 8);
-
-    for (x = 0; x < 8; x++)
-    {
-        px(TILE_ROOF_EAVE_M,x,2,9);
-        px(TILE_ROOF_EAVE_M,x,4,10);
         px(TILE_ROOF_EAVE_M,x,5,10);
-        px(TILE_ROOF_EAVE_M,x,6,7);
-        px(TILE_ROOF_EAVE_M,x,7,6);
-    }
-
-    fill(TILE_ROOF_EAVE_R, 8);
-
-    for (x = 0; x < 8; x++)
-    {
-        px(TILE_ROOF_EAVE_R,x,2,9);
-        px(TILE_ROOF_EAVE_R,x,4,10);
         px(TILE_ROOF_EAVE_R,x,5,10);
+        px(TILE_ROOF_EAVE_L,x,6,7);
+        px(TILE_ROOF_EAVE_M,x,6,7);
         px(TILE_ROOF_EAVE_R,x,6,7);
+        px(TILE_ROOF_EAVE_L,x,7,6);
+        px(TILE_ROOF_EAVE_M,x,7,6);
         px(TILE_ROOF_EAVE_R,x,7,6);
     }
+    px(TILE_ROOF_EAVE_L,0,7,8);
+    px(TILE_ROOF_EAVE_R,7,7,8);
 
-    px(TILE_ROOF_EAVE_R,6,6,8);
-    px(TILE_ROOF_EAVE_R,7,6,8);
-
-    /* =====================================================
-       HOUSE V2 - WALL
-
-       Less dotted/noisy than previous facade.
-       ===================================================== */
-
-    fill(TILE_WALL, 5);
-
-    /*
-       Tiny horizontal plaster accents.
-    */
-
-    px(TILE_WALL,1,2,15);
-    px(TILE_WALL,2,2,15);
-
-    px(TILE_WALL,5,5,6);
-    px(TILE_WALL,6,5,6);
-
-    fill(TILE_WALL_DETAIL, 5);
-
-    for (x = 0; x < 8; x++)
-    {
-        px(
-            TILE_WALL_DETAIL,
-            x,
-            0,
-            15
-        );
+    /* Plaster and vertical timber trim. */
+    fill(TILE_WALL,5);
+    fill(TILE_WALL_DETAIL,5);
+    for(y=0;y<8;y++){
+        px(TILE_WALL_DETAIL,0,y,6);
+        px(TILE_WALL_DETAIL,1,y,4);
     }
-
-    px(TILE_WALL_DETAIL,1,4,6);
-    px(TILE_WALL_DETAIL,2,4,6);
-
-    /*
-       Foundation / base.
-    */
-
-    fill(TILE_WALL_BASE, 5);
-
-    for (x = 0; x < 8; x++)
-    {
-        px(TILE_WALL_BASE,x,4,4);
-        px(TILE_WALL_BASE,x,5,6);
-        px(TILE_WALL_BASE,x,6,6);
+    for(x=0;x<8;x++){
+        px(TILE_WALL_DETAIL,x,0,15);
+    }
+    px(TILE_WALL,2,2,15);px(TILE_WALL,3,2,15);
+    px(TILE_WALL,6,6,4);
+    fill(TILE_WALL_BASE,5);
+    for(x=0;x<8;x++){
+        px(TILE_WALL_BASE,x,3,4);
+        px(TILE_WALL_BASE,x,4,6);
         px(TILE_WALL_BASE,x,7,7);
     }
 
-    /* =====================================================
-       WINDOWS V2
-       ===================================================== */
-
-    fill(TILE_WINDOW_TL, 5);
-
-    /*
-       Outer frame
-    */
-    rect(
-        TILE_WINDOW_TL,
-        1,1,
-        7,7,
-        6
-    );
-
-    /*
-       Dark inner frame
-    */
-    rect(
-        TILE_WINDOW_TL,
-        2,2,
-        7,7,
-        7
-    );
-
-    /*
-       Glass
-    */
-    rect(
-        TILE_WINDOW_TL,
-        3,3,
-        7,7,
-        14
-    );
-
-    /*
-       Reflection
-    */
-    px(TILE_WINDOW_TL,3,3,15);
-    px(TILE_WINDOW_TL,4,3,15);
-    px(TILE_WINDOW_TL,3,4,15);
-
-    fill(TILE_WINDOW_TR, 5);
-
-    rect(
-        TILE_WINDOW_TR,
-        0,1,
-        6,7,
-        6
-    );
-
-    rect(
-        TILE_WINDOW_TR,
-        0,2,
-        5,7,
-        7
-    );
-
-    rect(
-        TILE_WINDOW_TR,
-        0,3,
-        4,7,
-        14
-    );
-
-    px(TILE_WINDOW_TR,1,3,15);
-
-    /*
-       Bottom left
-    */
-
-    fill(TILE_WINDOW_BL, 5);
-
-    rect(
-        TILE_WINDOW_BL,
-        1,0,
-        7,5,
-        6
-    );
-
-    rect(
-        TILE_WINDOW_BL,
-        2,0,
-        7,4,
-        7
-    );
-
-    rect(
-        TILE_WINDOW_BL,
-        3,0,
-        7,3,
-        14
-    );
-
-    /*
-       vertical divider
-    */
-    for (y = 0; y <= 3; y++)
+    /* Four quarters of one framed 16x16 window. */
+    fill(TILE_WINDOW_TL,5);fill(TILE_WINDOW_TR,5);
+    fill(TILE_WINDOW_BL,5);fill(TILE_WINDOW_BR,5);
+    rect(TILE_WINDOW_TL,1,1,7,7,6);
+    rect(TILE_WINDOW_TR,0,1,6,7,6);
+    rect(TILE_WINDOW_BL,1,0,7,5,6);
+    rect(TILE_WINDOW_BR,0,0,6,5,6);
+    rect(TILE_WINDOW_TL,2,2,7,7,7);
+    rect(TILE_WINDOW_TR,0,2,5,7,7);
+    rect(TILE_WINDOW_BL,2,0,7,4,7);
+    rect(TILE_WINDOW_BR,0,0,5,4,7);
+    rect(TILE_WINDOW_TL,3,3,7,7,14);
+    rect(TILE_WINDOW_TR,0,3,4,7,14);
+    rect(TILE_WINDOW_BL,3,0,7,3,14);
+    rect(TILE_WINDOW_BR,0,0,4,3,14);
+    /* Crossbars and reflected light. */
+    for(x=3;x<8;x++)px(TILE_WINDOW_BL,x,0,7);
+    for(x=0;x<5;x++)px(TILE_WINDOW_BR,x,0,7);
+    for(y=3;y<8;y++){
+        px(TILE_WINDOW_TL,7,y,7);
         px(TILE_WINDOW_BL,7,y,7);
-
-    /*
-       sill
-    */
-    for (x = 1; x < 8; x++)
-    {
-        px(TILE_WINDOW_BL,x,5,15);
-        px(TILE_WINDOW_BL,x,6,6);
+    }
+    px(TILE_WINDOW_TL,3,3,15);px(TILE_WINDOW_TL,4,3,15);
+    px(TILE_WINDOW_TR,1,4,15);
+    for(x=1;x<7;x++){
+        px(TILE_WINDOW_BL,x,6,15);
+        px(TILE_WINDOW_BR,x,6,15);
     }
 
-    fill(TILE_WINDOW_BR, 5);
-
-    rect(
-        TILE_WINDOW_BR,
-        0,0,
-        6,5,
-        6
-    );
-
-    rect(
-        TILE_WINDOW_BR,
-        0,0,
-        5,4,
-        7
-    );
-
-    rect(
-        TILE_WINDOW_BR,
-        0,0,
-        4,3,
-        14
-    );
-
-    for (x = 0; x <= 6; x++)
-    {
-        px(TILE_WINDOW_BR,x,5,15);
-        px(TILE_WINDOW_BR,x,6,6);
+    /* Recessed double-height wooden entrance. */
+    fill(TILE_DOOR_TL,5);fill(TILE_DOOR_TR,5);
+    fill(TILE_DOOR_BL,5);fill(TILE_DOOR_BR,5);
+    rect(TILE_DOOR_TL,2,0,7,7,15);
+    rect(TILE_DOOR_TR,0,0,5,7,15);
+    rect(TILE_DOOR_BL,2,0,7,7,15);
+    rect(TILE_DOOR_BR,0,0,5,7,15);
+    rect(TILE_DOOR_TL,3,1,7,7,7);
+    rect(TILE_DOOR_TR,0,1,4,7,7);
+    rect(TILE_DOOR_BL,3,0,7,7,7);
+    rect(TILE_DOOR_BR,0,0,4,7,7);
+    rect(TILE_DOOR_TL,4,2,7,7,6);
+    rect(TILE_DOOR_TR,0,2,3,7,6);
+    rect(TILE_DOOR_BL,4,0,7,6,6);
+    rect(TILE_DOOR_BR,0,0,3,6,6);
+    px(TILE_DOOR_TL,5,4,4);px(TILE_DOOR_TR,2,4,4);
+    px(TILE_DOOR_BL,5,3,4);px(TILE_DOOR_BR,2,3,15);
+    for(x=0;x<8;x++){
+        px(TILE_DOOR_BL,x,7,7);
+        px(TILE_DOOR_BR,x,7,7);
     }
 
-    /* =====================================================
-       DOOR V2
+    fill(TILE_SIGN,5);
+    rect(TILE_SIGN,1,2,6,6,6);
+    rect(TILE_SIGN,2,3,5,5,4);
+    px(TILE_SIGN,3,4,8);px(TILE_SIGN,4,4,8);
 
-       Stronger frame + recessed door.
-       ===================================================== */
-
-    fill(TILE_DOOR_TL, 5);
-
-    /*
-       trim
-    */
-    rect(
-        TILE_DOOR_TL,
-        2,0,
-        7,7,
-        15
-    );
-
-    /*
-       outline
-    */
-    rect(
-        TILE_DOOR_TL,
-        3,1,
-        7,7,
-        7
-    );
-
-    /*
-       wood
-    */
-    rect(
-        TILE_DOOR_TL,
-        4,2,
-        7,7,
-        6
-    );
-
-    fill(TILE_DOOR_TR, 5);
-
-    rect(
-        TILE_DOOR_TR,
-        0,0,
-        5,7,
-        15
-    );
-
-    rect(
-        TILE_DOOR_TR,
-        0,1,
-        4,7,
-        7
-    );
-
-    rect(
-        TILE_DOOR_TR,
-        0,2,
-        3,7,
-        6
-    );
-
-    /*
-       lower left
-    */
-
-    fill(TILE_DOOR_BL, 5);
-
-    rect(
-        TILE_DOOR_BL,
-        2,0,
-        7,7,
-        15
-    );
-
-    rect(
-        TILE_DOOR_BL,
-        3,0,
-        7,7,
-        7
-    );
-
-    rect(
-        TILE_DOOR_BL,
-        4,0,
-        7,6,
-        6
-    );
-
-    /*
-       subtle wood panel
-    */
-    px(TILE_DOOR_BL,5,2,4);
-    px(TILE_DOOR_BL,6,2,4);
-
-    fill(TILE_DOOR_BR, 5);
-
-    rect(
-        TILE_DOOR_BR,
-        0,0,
-        5,7,
-        15
-    );
-
-    rect(
-        TILE_DOOR_BR,
-        0,0,
-        4,7,
-        7
-    );
-
-    rect(
-        TILE_DOOR_BR,
-        0,0,
-        3,6,
-        6
-    );
-
-    /*
-       handle
-    */
-    px(
-        TILE_DOOR_BR,
-        2,
-        3,
-        15
-    );
-
-    /*
-       threshold
-    */
-
-    for (x = 0; x < 8; x++)
-    {
-        px(
-            TILE_DOOR_BL,
-            x,
-            7,
-            7
-        );
-
-        px(
-            TILE_DOOR_BR,
-            x,
-            7,
-            7
-        );
-    }
-
-    /* =====================================================
-       SIGN
-       ===================================================== */
-
-    fill(TILE_SIGN, 5);
-
-    /*
-       small wooden wall plaque instead of
-       two strange squares.
-    */
-
-    rect(
-        TILE_SIGN,
-        1,2,
-        6,6,
-        6
-    );
-
-    rect(
-        TILE_SIGN,
-        2,3,
-        5,5,
-        4
-    );
-
-    px(TILE_SIGN,3,4,8);
-    px(TILE_SIGN,4,4,8);
-
-    /* =====================================================
-       FLOWER BOX
-       ===================================================== */
-
-    fill(TILE_FLOWER_BOX, 5);
-
-    /*
-       flower heads
-    */
-
-    px(TILE_FLOWER_BOX,1,3,15);
-    px(TILE_FLOWER_BOX,3,2,9);
-    px(TILE_FLOWER_BOX,5,3,15);
-
-    /*
-       leaves
-    */
-
-    px(TILE_FLOWER_BOX,2,4,11);
-    px(TILE_FLOWER_BOX,4,4,11);
-    px(TILE_FLOWER_BOX,6,4,11);
-
-    /*
-       wooden planter
-    */
-
-    rect(
-        TILE_FLOWER_BOX,
-        0,5,
-        7,6,
-        6
-    );
-
-    for (x = 0; x < 8; x++)
-        px(TILE_FLOWER_BOX,x,7,7);
+    fill(TILE_FLOWER_BOX,5);
+    rect(TILE_FLOWER_BOX,0,5,7,6,6);
+    for(x=0;x<8;x++)px(TILE_FLOWER_BOX,x,7,7);
+    px(TILE_FLOWER_BOX,1,3,9);px(TILE_FLOWER_BOX,4,2,15);
+    px(TILE_FLOWER_BOX,6,3,9);
+    px(TILE_FLOWER_BOX,2,4,11);px(TILE_FLOWER_BOX,5,4,11);
 
     /* =====================================================
        TREES

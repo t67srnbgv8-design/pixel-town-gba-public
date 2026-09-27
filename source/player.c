@@ -28,55 +28,112 @@ static int hairColorIndex(void){switch(characterConfig.hairColor){case 0:return 
 static int clothesColorIndex(void){switch(characterConfig.clothes){case 0:return 6;case 1:return 7;case 2:return 8;default:return 9;}}
 
 static void makePlayerFrame(u16*g,int direction,int frame){
- int hair=hairColorIndex(),clothes=clothesColorIndex();
- clearSprite(g); spriteRect(g,4,29,11,30,1);
+ int hair=hairColorIndex(),top=clothesColorIndex();
+ int leftStep=frame ? -1 : 0, rightStep=frame ? 1 : 0;
+ int left=direction==DIR_LEFT, right=direction==DIR_RIGHT;
+ int back=direction==DIR_UP;
+ clearSprite(g);
 
- /* lower garment and legs */
- if(characterConfig.bottomStyle==0){
-  if(!frame){spriteRect(g,5,22,7,28,10);spriteRect(g,8,22,10,28,10);}
-  else {spriteRect(g,4,22,6,28,10);spriteRect(g,9,22,11,28,10);}
- } else if(characterConfig.bottomStyle==1){
-  spriteRect(g,4,22,7,24,10);spriteRect(g,8,22,11,24,10);
-  if(!frame){spriteRect(g,5,25,7,28,11);spriteRect(g,8,25,10,28,11);}
-  else {spriteRect(g,4,25,6,28,11);spriteRect(g,9,25,11,28,11);}
- } else if(characterConfig.bottomStyle==2){
-  spriteRect(g,3,21,12,25,clothes);spriteRect(g,4,24,11,26,clothes);
-  spriteRect(g,5,26,7,28,11);spriteRect(g,8,26,10,28,11);
+ /* Boots and separate walking legs. The outline makes the figure readable
+    against both the pale road and the dark grass. */
+ spriteRect(g,4+leftStep,27,7+leftStep,30,1);
+ spriteRect(g,8+rightStep,27,11+rightStep,30,1);
+ spriteRect(g,5+leftStep,27,7+leftStep,28,10);
+ spriteRect(g,8+rightStep,27,10+rightStep,28,10);
+ spritePixel(g,5+leftStep,29,12);
+ spritePixel(g,8+rightStep,29,12);
+
+ if(characterConfig.bottomStyle==0){ /* trousers */
+  spriteRect(g,4,20,11,23,1);
+  spriteRect(g,5+leftStep,23,7+leftStep,27,10);
+  spriteRect(g,8+rightStep,23,10+rightStep,27,10);
+  spriteRect(g,5,22,6,24,13);
+  spritePixel(g,9,24,13);
+ } else if(characterConfig.bottomStyle==1){ /* shorts */
+  spriteRect(g,4,20,11,24,1);
+  spriteRect(g,5,21,7,23,10);spriteRect(g,8,21,10,23,10);
+  spriteRect(g,5+leftStep,24,7+leftStep,27,11);
+  spriteRect(g,8+rightStep,24,10+rightStep,27,11);
+ } else { /* skirt and dress retain separate visible legs */
+  spriteRect(g,5+leftStep,25,7+leftStep,27,11);
+  spriteRect(g,8+rightStep,25,10+rightStep,27,11);
+  spriteRect(g,4,21,11,22,1);
+  spriteRect(g,3,23,12,25,1);
+  spriteRect(g,4,22,11,24,top);
+  spriteRect(g,5,24,10,25,top);
+  spritePixel(g,5,23,12);
+ }
+
+ /* Fitted torso, sleeves, hands and a narrow neck. */
+ spriteRect(g,5,13,10,21,1);
+ spriteRect(g,4,15,11,20,1);
+ spriteRect(g,3,16,4,21,1);spriteRect(g,11,16,12,21,1);
+ spriteRect(g,5,14,10,20,top);
+ spriteRect(g,4,16,11,19,top);
+ if(characterConfig.gender){spritePixel(g,4,20,top);spritePixel(g,11,20,top);}
+ spriteRect(g,3,17,3,20,top);spriteRect(g,12,17,12,20,top);
+ spritePixel(g,3,21,11);spritePixel(g,12,21,11);
+ spriteRect(g,7,12,8,14,11);
+ if(characterConfig.bottomStyle==3){
+  spriteRect(g,5,20,10,23,top);
+  spriteRect(g,4,21,11,23,top);
+ }
+ /* Distinct top styles, without covering the outfit silhouette. */
+ if(characterConfig.clothes==0){
+  spritePixel(g,5,15,12);spritePixel(g,10,15,12);
+  spriteRect(g,6,14,9,14,12);
+ } else if(characterConfig.clothes==1){
+  spriteRect(g,5,13,10,15,top);
+  spritePixel(g,6,16,12);spritePixel(g,9,16,12);
+  spriteRect(g,6,19,9,19,13);
+ } else if(characterConfig.clothes==2){
+  spriteRect(g,7,15,8,20,1);
+  spritePixel(g,6,16,12);spritePixel(g,9,16,12);
+  spritePixel(g,7,18,12);
  } else {
-  spriteRect(g,4,18,11,25,clothes);spriteRect(g,3,22,12,26,clothes);
-  spriteRect(g,5,26,7,28,11);spriteRect(g,8,26,10,28,11);
+  spriteRect(g,5,19,10,20,13);
+  spritePixel(g,5,16,12);spritePixel(g,10,16,12);
  }
- if(!frame){spriteRect(g,4,27,7,29,1);spriteRect(g,8,27,11,29,1);}
- else {spriteRect(g,3,27,6,29,1);spriteRect(g,9,27,12,29,1);}
 
- /* strongly different silhouettes */
- if(characterConfig.gender==0){
-  spriteRect(g,4,14,11,22,clothes);spriteRect(g,3,16,4,21,11);spriteRect(g,11,16,12,21,11);
- }else{
-  spriteRect(g,5,14,10,17,clothes);spriteRect(g,4,18,11,22,clothes);spriteRect(g,3,16,4,21,11);spriteRect(g,11,16,12,21,11);
+ /* Ears, face and rounded hair silhouette. */
+ spriteRect(g,5,3,10,13,1);
+ spriteRect(g,4,5,11,11,1);
+ spriteRect(g,5,5,10,12,11);
+ spritePixel(g,4,8,11);spritePixel(g,11,8,11);
+ spriteRect(g,6,11,9,12,14);
+ spriteRect(g,5,2,10,4,hair);
+ spriteRect(g,4,4,11,5,hair);
+ spriteRect(g,4,5,5,7,hair);
+ spriteRect(g,10,5,11,7,hair);
+ spritePixel(g,6,2,12);spritePixel(g,7,2,12);
+ if(characterConfig.hairLength){
+  spriteRect(g,3,6,4,14,1);spriteRect(g,11,6,12,14,1);
+  spriteRect(g,4,7,4,13,hair);spriteRect(g,11,7,11,13,hair);
+  spritePixel(g,3,13,hair);spritePixel(g,12,13,hair);
  }
- if(characterConfig.bottomStyle==3){spriteRect(g,4,18,11,23,clothes);}
-
- if(characterConfig.clothes==0){spriteRect(g,3,15,5,18,clothes);spriteRect(g,10,15,12,18,clothes);spritePixel(g,6,15,12);}
- else if(characterConfig.clothes==1){spriteRect(g,3,14,12,18,clothes);spriteRect(g,4,13,11,15,clothes);spritePixel(g,7,16,12);spritePixel(g,8,16,12);}
- else if(characterConfig.clothes==2){spriteRect(g,3,15,12,22,clothes);spriteRect(g,7,15,8,22,1);spritePixel(g,5,17,12);spritePixel(g,10,17,12);}
- else {spriteRect(g,3,15,12,22,clothes);spriteRect(g,3,18,4,22,clothes);spriteRect(g,11,18,12,22,clothes);}
-
- spriteRect(g,7,12,8,15,11);spriteRect(g,5,4,10,13,11);spriteRect(g,4,6,11,12,11);
- spriteRect(g,3,8,4,11,11);spriteRect(g,11,8,12,11,11);
- spriteRect(g,5,2,10,4,hair);spriteRect(g,4,3,11,7,hair);spritePixel(g,3,5,hair);spritePixel(g,12,5,hair);
- spriteRect(g,3,6,5,9,hair);spriteRect(g,10,6,12,8,hair);
- if(characterConfig.hairLength){spriteRect(g,3,8,4,16,hair);spriteRect(g,11,8,12,16,hair);}
- if(direction==DIR_DOWN){spritePixel(g,6,9,1);spritePixel(g,9,9,1);}
- else if(direction==DIR_UP){spriteRect(g,5,6,10,11,hair);spriteRect(g,4,8,11,10,hair);}
- else if(direction==DIR_LEFT)spritePixel(g,5,9,1); else spritePixel(g,10,9,1);
+ if(back){
+  spriteRect(g,5,5,10,11,hair);
+  spriteRect(g,6,12,9,13,hair);
+  spritePixel(g,6,4,13);
+ } else if(left||right){
+  int eye=left?5:10;
+  spritePixel(g,eye,8,1);
+  spritePixel(g,left?4:11,10,14);
+  spritePixel(g,left?6:9,11,13);
+  spriteRect(g,left?4:10,6,left?5:11,7,hair);
+ } else {
+  spritePixel(g,6,8,1);spritePixel(g,9,8,1);
+  spritePixel(g,6,9,12);spritePixel(g,9,9,12);
+  spritePixel(g,7,11,13);spritePixel(g,8,11,13);
+  spritePixel(g,5,9,14);spritePixel(g,10,9,14);
+ }
 }
 static int canMoveTo(int x,int y){return !worldIsBlocked(x+4,y+26)&&!worldIsBlocked(x+11,y+26)&&!worldIsBlocked(x+4,y+29)&&!worldIsBlocked(x+11,y+29);}
 void playerInit(void){
  int i;player.x=244;player.y=92;player.direction=DIR_DOWN;player.frame=0;player.animationTimer=0;
  SPRITE_PALETTE[0]=RGB5(0,0,0);SPRITE_PALETTE[1]=RGB5(3,3,4);SPRITE_PALETTE[2]=RGB5(2,2,3);SPRITE_PALETTE[3]=RGB5(12,6,3);
  SPRITE_PALETTE[4]=RGB5(28,22,10);SPRITE_PALETTE[5]=RGB5(21,7,3);SPRITE_PALETTE[6]=RGB5(5,14,29);SPRITE_PALETTE[7]=RGB5(26,5,5);
- SPRITE_PALETTE[8]=RGB5(6,23,9);SPRITE_PALETTE[9]=RGB5(18,7,25);SPRITE_PALETTE[10]=RGB5(8,9,12);SPRITE_PALETTE[11]=RGB5(27,18,13);SPRITE_PALETTE[12]=RGB5(31,31,31);
+ SPRITE_PALETTE[8]=RGB5(6,23,9);SPRITE_PALETTE[9]=RGB5(18,7,25);SPRITE_PALETTE[10]=RGB5(8,9,12);SPRITE_PALETTE[11]=RGB5(27,18,13);SPRITE_PALETTE[12]=RGB5(31,31,31);SPRITE_PALETTE[13]=RGB5(15,12,13);SPRITE_PALETTE[14]=RGB5(23,13,9);
  for(i=0;i<128;i++)((u16*)SPRITE_GFX)[i]=0;
  for(i=0;i<128;i++){OAM[i].attr0=OBJ_HIDE;OAM[i].attr1=0;OAM[i].attr2=0;}
  makePlayerFrame(playerTiles,player.direction,player.frame);

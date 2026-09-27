@@ -4,6 +4,9 @@
 #include "character_select.h"
 
 Player player;
+/* Eight consecutive 4-bpp tiles: two tiles per row in OBJ_1D_MAP. */
+static u16 playerTiles[128] __attribute__((aligned(4)));
+static int drawnDirection=-1,drawnFrame=-1;
 enum {DIR_DOWN=0,DIR_UP,DIR_LEFT,DIR_RIGHT};
 #define OBJ_Y_MASK 0x00FF
 #define OBJ_X_MASK 0x01FF
@@ -76,7 +79,10 @@ void playerInit(void){
  SPRITE_PALETTE[8]=RGB5(6,23,9);SPRITE_PALETTE[9]=RGB5(18,7,25);SPRITE_PALETTE[10]=RGB5(8,9,12);SPRITE_PALETTE[11]=RGB5(27,18,13);SPRITE_PALETTE[12]=RGB5(31,31,31);
  for(i=0;i<128;i++)((u16*)SPRITE_GFX)[i]=0;
  for(i=0;i<128;i++){OAM[i].attr0=OBJ_HIDE;OAM[i].attr1=0;OAM[i].attr2=0;}
- makePlayerFrame((u16*)SPRITE_GFX,player.direction,player.frame);REG_DISPCNT&=~0x0080;
+ makePlayerFrame(playerTiles,player.direction,player.frame);
+ CpuFastSet(playerTiles,SPRITE_GFX,COPY32|64);
+ drawnDirection=player.direction;drawnFrame=player.frame;
+ REG_DISPCNT&=~0x0080;
 }
 void playerUpdate(void){
  int newX=player.x,newY=player.y,moving=0;u16 held;scanKeys();held=keysHeld();
@@ -84,12 +90,16 @@ void playerUpdate(void){
  else if(held&KEY_LEFT){newX--;player.direction=DIR_LEFT;moving=1;}else if(held&KEY_RIGHT){newX++;player.direction=DIR_RIGHT;moving=1;}
  if(moving&&canMoveTo(newX,newY)){player.x=newX;player.y=newY;if(++player.animationTimer>=8){player.animationTimer=0;player.frame^=1;}}
  else {player.animationTimer=0;player.frame=0;}
- makePlayerFrame((u16*)SPRITE_GFX,player.direction,player.frame);
+ if(player.direction!=drawnDirection||player.frame!=drawnFrame){
+  makePlayerFrame(playerTiles,player.direction,player.frame);
+  CpuFastSet(playerTiles,SPRITE_GFX,COPY32|64);
+  drawnDirection=player.direction;drawnFrame=player.frame;
+ }
 }
 void playerDraw(int cameraX,int cameraY){
  int screenX=player.x-cameraX,screenY=player.y-cameraY;
  OAM[0].attr0=(screenY&OBJ_Y_MASK)|OBJ_SHAPE_TALL;
  OAM[0].attr1=(screenX&OBJ_X_MASK)|OBJ_SIZE_16X32;
  OAM[0].attr2=OBJ_PRIORITY_1;
- CpuFastSet(OAM,(void*)0x07000000,COPY32|(sizeof(OAM)/4));
+ /* OAM already points to hardware OAM; no self-copy is needed. */
 }

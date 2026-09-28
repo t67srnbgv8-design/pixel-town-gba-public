@@ -111,10 +111,10 @@ void metatilesInit(void)
     setMeta(
         META_PATH_V,
 
-        TILE_PATH_EDGE_L,
-        TILE_PATH_EDGE_R,
-        TILE_PATH_EDGE_L,
-        TILE_PATH_EDGE_R,
+        TILE_PATH,
+        TILE_PATH,
+        TILE_PATH,
+        TILE_PATH,
 
         0,0,0,0,
 
@@ -329,11 +329,11 @@ void metatilesInit(void)
     setMeta(
         META_DOOR_BOTTOM,
 
-        TILE_PATH_EDGE_L,
-        TILE_PATH_EDGE_R,
+        TILE_DOOR_BL,
+        TILE_DOOR_BR,
 
-        TILE_PATH_EDGE_L,
-        TILE_PATH_EDGE_R,
+        TILE_PATH,
+        TILE_PATH,
 
         0,0,0,0,
 
